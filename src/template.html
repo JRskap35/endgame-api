@@ -59,6 +59,20 @@ button{font:inherit;color:inherit}
 .acct-av:empty{display:none}
 .acct.in .acct-l{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media (max-width:440px){ .acct.in .acct-l{display:none} .acct{padding:0 9px} .icon-btn.acct:not(.in) .acct-l{display:inline} .icon-btn.acct .acct-av:not(:empty){display:grid} }
+.snd-ic{display:grid;place-items:center}
+#soundBtn .snd-ic{display:grid}
+.snd-ic svg{width:16px;height:16px}
+#soundBtn.muted{color:var(--faint)}
+.vol{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:6px 10px 10px;min-width:250px}
+.menu .vol-mute{appearance:none;background:none;border:1px solid var(--line-2);color:var(--fg);width:34px;height:34px;padding:0;border-radius:2px;display:grid;place-items:center;cursor:pointer}
+.menu .vol-mute:hover,.menu .vol-mute:focus-visible{border-color:var(--accent);color:var(--accent);background:none}
+.vol-mute svg{width:18px;height:18px}
+.menu .vol-mute[aria-pressed="true"]{color:var(--faint);background:rgba(255,255,255,.04)}
+.vol-pct{font-family:var(--font-mono);font-size:12px;color:var(--muted);min-width:44px;text-align:right;font-variant-numeric:tabular-nums}
+#vol{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;background:linear-gradient(to right,var(--accent) var(--p,80%),var(--line-2) var(--p,80%));cursor:pointer;margin:0}
+#vol::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--fg);border:2px solid var(--accent);cursor:pointer}
+#vol::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--fg);border:2px solid var(--accent);cursor:pointer}
+#vol:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
 .info-btn{appearance:none;background:none;border:0;padding:0;margin-left:-2px;width:26px;height:26px;display:grid;place-items:center;color:var(--muted);cursor:pointer;border-radius:50%;flex:none}
 .info-btn svg{width:20px;height:20px}
 .info-btn:hover{color:var(--accent)}
@@ -473,9 +487,9 @@ tr.detail.adetail td{padding-left:72px}
     <div class="top-right">
       <span class="sync" id="sync" role="status"><span class="dot"></span><span class="label">Loading</span></span>
       <button type="button" class="icon-btn acct" id="acct" data-act="acct" aria-haspopup="menu" hidden><span class="acct-av" aria-hidden="true"></span><span class="acct-l">Sign in</span></button>
-      <button type="button" class="icon-btn" data-act="sound" aria-label="God roll sound settings">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>
-        <span>Sound</span>
+      <button type="button" class="icon-btn" id="soundBtn" data-act="sound" aria-haspopup="true" aria-label="God roll sound volume">
+        <span class="snd-ic" aria-hidden="true"></span>
+        <span class="snd-l">Sound</span>
       </button>
     </div>
   </div>
@@ -495,6 +509,7 @@ tr.detail.adetail td{padding-left:72px}
 <script id="vault-trait-icons" type="application/json">__TICONS__</script>
 <script id="vault-elements" type="application/json">__ELEMENTS__</script>
 <script id="vault-firebase" type="application/json">__FIREBASE__</script>
+<script id="vault-sound" type="application/json">__SOUND__</script>
 <input type="file" id="importFile" accept="application/json,.json" hidden>
 <script>
 (function(){
@@ -595,7 +610,7 @@ const PIECE_SVG = {
 };
 
 /* ================= STATE + SAVING ================= */
-const LKEY = "vault.v1", LSOUND = "vault.sound.v1";
+const LKEY = "vault.v1";
 const local = {
   get(k,d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
   set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } },
@@ -605,7 +620,10 @@ const cached = local.get(LKEY, {});
 let marks = cached.marks || {};
 let armor = cached.armor || {};
 let armorLook = cached.armorLook || {};
-let soundURL = local.get(LSOUND, null);
+const SOUND_URL = (() => { try{ return JSON.parse(document.getElementById("vault-sound").textContent); }catch(e){ return null; } })();
+const LVOL = "vault.volume.v1";
+const VOL = Object.assign({v:0.8, m:false}, local.get(LVOL, {}));
+const saveVol = () => local.set(LVOL, VOL);
 
 const S = {
   view:"weapons", vaultSub:"weapons",
@@ -672,7 +690,6 @@ function attachStore(ref, sref){
     setSync("saved");
     if(overlay.hidden && menu.hidden) render();
   }, () => { docRef = null; setSync(FB_CONFIG ? "error" : "local"); });
-  sref.get().then(s => { if(s.exists && s.data().url){ soundURL = s.data().url; local.set(LSOUND, soundURL); } }).catch(()=>{});
 }
 async function initSync(){
   if(FB_CONFIG) return initFirebase(FB_CONFIG);
@@ -1186,18 +1203,34 @@ function infoModal(){
       <button type="button" class="btn primary" data-act="modal-close" data-autofocus>Done</button>
     </div>`);
 }
-function soundModal(msg){
-  openModal(`<div class="modal-head"><h2>God Roll Sound</h2>${closeX}</div>
-    <div class="modal-body">
-      <p>Choose the clip that plays with the confetti when you log a God Roll. MP3, WAV or OGG all work. Keep it short so it can sync to your other devices.</p>
-      <div class="file-row"><input id="soundFile" type="file" accept="audio/*" aria-label="Choose a sound file"></div>
-      <div class="sound-state">${msg || (soundURL ? "Using your custom sound." : "Using the built-in chime.")}</div>
+const SPK = {
+  on:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>',
+  low:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>',
+  off:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="m16 9 5 6M21 9l-5 6"/></svg>'
+};
+const volState = () => VOL.m || VOL.v === 0 ? "off" : VOL.v < 0.5 ? "low" : "on";
+function paintVol(){
+  const b = document.getElementById("soundBtn"); if(!b) return;
+  b.querySelector(".snd-ic").innerHTML = SPK[volState()];
+  b.classList.toggle("muted", volState() === "off");
+  b.setAttribute("aria-label", volState() === "off" ? "God roll sound muted. Change volume" : `God roll sound volume ${Math.round(VOL.v*100)} percent. Change volume`);
+  const pct = document.getElementById("volPct"), mb = document.querySelector(".vol-mute"), r = document.getElementById("vol");
+  if(pct) pct.textContent = volState() === "off" ? "Muted" : Math.round(VOL.v*100) + "%";
+  if(mb){ mb.innerHTML = SPK[volState()]; mb.setAttribute("aria-pressed", String(VOL.m)); mb.setAttribute("aria-label", VOL.m ? "Unmute" : "Mute"); }
+  if(r){ r.style.setProperty("--p", (VOL.m ? 0 : VOL.v*100) + "%"); }
+}
+function openVolume(btn){
+  S.menuFor = "sound";
+  menu.innerHTML = `<div class="mh">God roll sound</div>
+    <div class="vol">
+      <button type="button" class="vol-mute" data-act="mute"></button>
+      <input type="range" id="vol" min="0" max="100" step="1" value="${Math.round(VOL.v*100)}" aria-label="Volume">
+      <span class="vol-pct" id="volPct"></span>
     </div>
-    <div class="modal-foot">
-      ${soundURL?`<button type="button" class="btn ghost spacer" data-act="sound-reset">Use built-in chime</button>`:`<span class="spacer"></span>`}
-      <button type="button" class="btn" data-act="sound-test">Play</button>
-      <button type="button" class="btn primary" data-act="modal-close">Done</button>
-    </div>`);
+    <button type="button" role="menuitem" data-act="sound-test"><span style="color:var(--accent)">${SPK.on}</span>Play the sound</button>`;
+  paintVol();
+  placeMenu(btn);
+  const r = document.getElementById("vol"); if(r) r.focus();
 }
 
 /* ================= FX ================= */
@@ -1210,13 +1243,14 @@ function chime(){
       const o = actx.createOscillator(), g = actx.createGain();
       o.type = "triangle"; o.frequency.value = f;
       const s = t + i*0.075;
-      g.gain.setValueAtTime(0.0001, s); g.gain.exponentialRampToValueAtTime(0.16, s+0.015); g.gain.exponentialRampToValueAtTime(0.0001, s+0.7);
+      g.gain.setValueAtTime(0.0001, s); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, 0.16*VOL.v), s+0.015); g.gain.exponentialRampToValueAtTime(0.0001, s+0.7);
       o.connect(g).connect(actx.destination); o.start(s); o.stop(s+0.75);
     });
   }catch(e){}
 }
 function playGodSound(){
-  if(soundURL){ try{ const a = new Audio(soundURL); a.volume = 0.9; a.play().catch(chime); return; }catch(e){} }
+  if(VOL.m || VOL.v === 0) return;
+  if(SOUND_URL){ try{ const a = new Audio(SOUND_URL); a.volume = Math.min(1, VOL.v); a.play().catch(chime); return; }catch(e){} }
   chime();
 }
 const cv = $("#confetti"); let parts = [], raf = 0;
@@ -1269,7 +1303,7 @@ function refreshList(){
 }
 document.addEventListener("click", e => {
   const t = e.target.closest("[data-act]");
-  if(!t || !t.closest("#menu")){ if(!(t && (t.dataset.act === "status" || t.dataset.act === "piece" || t.dataset.act === "acct"))) closeMenu(); }
+  if(!t || !t.closest("#menu")){ if(!(t && (t.dataset.act === "status" || t.dataset.act === "piece" || t.dataset.act === "acct" || t.dataset.act === "sound"))) closeMenu(); }
   if(!t) return;
   const a = t.dataset.act, k = t.dataset.k, id = t.dataset.id;
   switch(a){
@@ -1340,7 +1374,13 @@ document.addEventListener("click", e => {
       const store = mode === "want" ? armorLook : armor;
       if(store[setId]){ delete store[setId][piece]; if(!Object.keys(store[setId]).length) delete store[setId]; }
       persist(); closeModal(); render(); return; }
-    case "sound": soundModal(); return;
+    case "sound":
+      if(S.menuFor === "sound" && !menu.hidden){ closeMenu(); return; }
+      openVolume(t); return;
+    case "mute": {
+      VOL.m = !VOL.m; if(!VOL.m && VOL.v === 0) VOL.v = 0.5;
+      const r0 = document.getElementById("vol"); if(r0) r0.value = Math.round(VOL.v*100);
+      saveVol(); paintVol(); return; }
     case "acct":
       if(!fbAuth) return;
       if(!fbUser){ signIn(); return; }
@@ -1357,13 +1397,10 @@ document.addEventListener("click", e => {
       closeModal(); persist(); render(); toast("Progress imported"); return; }
     case "info": hideTip(); infoModal(); return;
     case "sound-test": playGodSound(); return;
-    case "sound-reset":
-      soundURL = null; local.del(LSOUND);
-      if(soundRef) soundRef.delete().catch(()=>{});
-      soundModal("Switched back to the built-in chime."); return;
   }
 });
 document.addEventListener("input", e => {
+  if(e.target.id === "vol"){ VOL.v = (+e.target.value)/100; VOL.m = false; saveVol(); paintVol(); return; }
   const t = e.target;
   if(t.id === "wq"){ S.q = t.value; $("#list").innerHTML = weaponList(S.view === "vault" ? "vault" : "all"); }
   if(t.id === "aq"){ S.aq = t.value; $("#alist").innerHTML = armorList("all"); }
@@ -1379,18 +1416,6 @@ document.addEventListener("change", e => {
     });
     return;
   }
-  if(e.target.id !== "soundFile") return;
-  const f = e.target.files && e.target.files[0]; if(!f) return;
-  const rd = new FileReader();
-  rd.onload = async () => {
-    soundURL = rd.result;
-    const keptLocal = local.set(LSOUND, soundURL);
-    let synced = false;
-    if(soundRef && soundURL.length < 240000){ try{ await soundRef.set({url:soundURL, name:f.name}); synced = true; }catch(err){} }
-    soundModal(synced ? `Saved “${f.name}” to your account.` : keptLocal ? `Saved “${f.name}” in this browser. Clips under about 170 KB also sync to your other devices.` : `Loaded “${f.name}” for this visit only. Try a shorter clip so it can be saved.`);
-    playGodSound();
-  };
-  rd.readAsDataURL(f);
 });
 document.addEventListener("toggle", e => { if(e.target.classList && e.target.classList.contains("filters")) S.fOpen = e.target.open; }, true);
 document.addEventListener("keydown", e => {
@@ -1435,6 +1460,7 @@ try{ PHONE.addEventListener("change", () => render()); }catch(err){}
 function fromHash(){ const h = location.hash.replace("#",""); if(["weapons","armor","vault"].includes(h)) S.view = h; render(); }
 addEventListener("hashchange", fromHash);
 setSync("loading");
+paintVol();
 fromHash();
 initSync();
 })();

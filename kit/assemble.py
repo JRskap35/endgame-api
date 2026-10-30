@@ -14,7 +14,7 @@ site = fb_path is not None   # any config argument, even null, means a standalon
 html = r(t)
 for key, val in (("__DATA__", safe(r(data))), ("__ICONS__", safe(r(icons))), ("__STATICONS__", safe(r(stat))),
                  ("__TICONS__", safe(r(ticons))), ("__ELEMENTS__", safe(r(elements))), ("__FIREBASE__", json.dumps(fb)),
-                 ("__LOGO__", b["logo"]), ("__BG__", b["bg"])):
+                 ("__LOGO__", b["logo"]), ("__BG__", b["bg"]), ("__SOUND__", json.dumps(b.get("sound")))):
     assert html.count(key) == 1, key
     html = html.replace(key, val, 1)
 if site:
