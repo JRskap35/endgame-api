@@ -26,7 +26,13 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
-      - name: Rebuild from TheAegisRelic's sheet
+      - name: Reuse Bungie's manifest and icons from earlier runs
+        uses: actions/cache@v4
+        with:
+          path: build/bungie_cache
+          key: bungie-${{ github.run_id }}
+          restore-keys: bungie-
+      - name: Rebuild from TheAegisRelic's sheet and Bungie's API
         env:
           SITE_URL: https://jrskap35.github.io/endgame-api/
         run: bash kit/build.sh

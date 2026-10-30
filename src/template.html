@@ -106,7 +106,11 @@ button{font:inherit;color:inherit}
 .pn + .pn{border-top:1px solid rgba(201,178,119,.16)}
 .pn img{width:24px;height:24px;flex:none}
 .pn.x{opacity:.45}
-.wcard .detail-grid{padding:6px 2px 2px;border-top:1px solid var(--line);grid-template-columns:1fr 1fr;gap:10px 16px}
+.wcard .dpanel{padding-top:8px;border-top:1px solid var(--line)}
+.wcard .dbuild{grid-template-columns:1fr 1fr}
+.wcard .dmeta{grid-template-columns:repeat(3,1fr)}
+.wcard .dnotes{grid-column:1/-1}
+.wcard .dstat{min-width:0;padding:8px}
 .acard .set{gap:10px}
 .acard .set-txt{min-width:0;flex:1}
 .acard .set-txt .nm{display:flex;align-items:center;gap:2px}
@@ -292,7 +296,26 @@ sup.fn{font-family:var(--font-mono);font-size:9.5px;color:var(--accent);cursor:h
 .expand:hover{color:var(--fg);border-color:var(--line-2)}
 .expand svg{width:14px;height:14px;transition:transform .15s}
 .open .expand svg{transform:rotate(90deg)}
-tr.detail td{background:rgba(201,178,119,.07);padding:4px 10px 16px 134px;text-align:left}
+tr.detail td{background:rgba(201,178,119,.07);padding:4px 14px 16px;text-align:left}
+.dpanel{display:grid;gap:10px}
+.dbuild{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
+.dbox{border:1px solid var(--line-2);background:rgba(0,0,0,.28);border-radius:3px;min-width:0;overflow:hidden}
+.dbox h4,.dstat h4,.dnotes h4{margin:0;font-family:var(--font-mono);font-weight:500;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.dbox h4{padding:6px 10px 5px;border-bottom:2px solid var(--sh-perks);background:rgba(39,78,19,.18)}
+.dbox.info h4{border-bottom-color:var(--sh-info);background:rgba(120,63,4,.2)}
+.dbox ul{list-style:none;margin:0;padding:2px 0}
+.dbox li{display:flex;align-items:center;gap:8px;padding:5px 10px;font-size:13.5px;line-height:1.25;min-height:34px}
+.dbox li + li{border-top:1px solid rgba(201,178,119,.13)}
+.dbox li img{width:24px;height:24px;flex:none}
+.dbox li span{min-width:0}
+.dbox li.x{opacity:.5}
+.dbox li.none{color:var(--faint)}
+.dmeta{display:grid;grid-template-columns:auto auto auto 1fr;gap:8px;align-items:stretch}
+.dstat,.dnotes{border:1px solid var(--line);background:rgba(0,0,0,.2);border-radius:3px;padding:8px 12px;display:grid;gap:6px;align-content:start}
+.dstat{min-width:96px}
+.dstat b{font-family:var(--font-display);font-weight:600;font-size:20px;letter-spacing:.04em;line-height:1}
+.dstat b.up.yes{color:var(--god)}
+.dnotes p{margin:0;font-size:14px;line-height:1.45;max-width:90ch}
 .detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,max-content));gap:12px 34px;align-items:start}
 .detail-grid .k{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:3px}
 .detail-grid .notes{grid-column:1/-1;max-width:80ch;color:var(--fg)}
@@ -313,6 +336,35 @@ tr.detail td{background:rgba(201,178,119,.07);padding:4px 10px 16px 134px;text-a
 .thumb.semi{border-color:var(--semi);box-shadow:0 0 0 1px rgba(243,198,74,.3),0 0 12px rgba(243,198,74,.4)}
 .thumb.looking{border-style:dashed;border-color:var(--look)}
 .thumb.pop{animation:pop .5s cubic-bezier(.3,1.6,.5,1)}
+button.thumb{appearance:none;display:block;padding:0;font:inherit;color:inherit;cursor:zoom-in;transition:transform .15s ease,filter .15s ease}
+button.thumb:hover{transform:scale(1.06);filter:brightness(1.12)}
+button.thumb:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* full weapon image popup: same border language as the weapon's thumbnail */
+.overlay.shotlay{background:rgba(4,7,11,.86)}
+.shotpop{display:grid;gap:10px;justify-items:center;max-width:100%;animation:rise .2s ease-out}
+.shotframe{position:relative;display:block;border:2px solid var(--line-2);border-radius:2px;background:var(--panel-2);overflow:hidden;line-height:0;box-shadow:0 24px 70px rgba(0,0,0,.6)}
+.shotframe img.full{display:block;width:auto;height:auto;max-width:min(1100px,calc(100vw - 48px));max-height:calc(100vh - 150px)}
+.shotframe .ph{width:min(1100px,calc(100vw - 48px));aspect-ratio:16/9;max-height:calc(100vh - 150px);display:grid;place-items:center;align-content:center;gap:12px;line-height:1.3;color:var(--muted);font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.shotframe .ph img{width:96px;height:96px;opacity:.85}
+.shotframe .ph.loading img{animation:breathe 1.4s ease-in-out infinite}
+@keyframes breathe{50%{opacity:.4}}
+.shotframe.god{border-color:var(--god);box-shadow:0 0 0 1px rgba(63,220,134,.35),0 0 28px rgba(63,220,134,.5),0 24px 70px rgba(0,0,0,.6)}
+.shotframe.god::after{content:"";position:absolute;inset:-2px;border:2px solid transparent;border-radius:2px;pointer-events:none;
+  background:linear-gradient(115deg,transparent 42%,rgba(220,255,236,.95) 50%,transparent 58%) border-box;background-size:300% 100%;
+  -webkit-mask:linear-gradient(#000 0 0) padding-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) padding-box exclude,linear-gradient(#000 0 0);
+  animation:edgesheen 2.8s ease-in-out infinite}
+@keyframes edgesheen{0%{background-position:100% 0}55%,100%{background-position:0 0}}
+.shotframe.semi{border-color:var(--semi);box-shadow:0 0 0 1px rgba(243,198,74,.3),0 0 22px rgba(243,198,74,.4),0 24px 70px rgba(0,0,0,.6)}
+.shotframe.looking{border-style:dashed;border-color:var(--look)}
+.shotcap{display:flex;align-items:center;gap:14px;max-width:min(1100px,calc(100vw - 48px));width:100%;justify-content:space-between}
+.shotcap .nm2{font-family:var(--font-display);font-size:20px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;line-height:1.15}
+.shotcap .sub{color:var(--muted);font-size:13px;margin-top:2px}
+.shotcap .sub b{font-weight:600}
+.shotcap .sub .god{color:var(--god)} .shotcap .sub .semi{color:var(--semi)} .shotcap .sub .looking{color:var(--look)}
+.shotcap .close{appearance:none;background:var(--panel-2);border:1px solid var(--line-2);color:var(--muted);cursor:pointer;width:38px;height:38px;display:grid;place-items:center;flex:none;border-radius:2px}
+.shotcap .close:hover{color:var(--fg);border-color:var(--faint)}
+.shotcap .close svg{width:18px;height:18px}
+@media (prefers-reduced-motion: reduce){.shotframe.god::after{animation:none}button.thumb{transition:none}}
 @keyframes sheen{0%{transform:translateX(-55%)}55%,100%{transform:translateX(55%)}}
 @keyframes pop{0%{transform:scale(.8)}100%{transform:scale(1)}}
 
@@ -326,6 +378,8 @@ tr.detail td{background:rgba(201,178,119,.07);padding:4px 10px 16px 134px;text-a
 .mini-bar i{display:block;height:100%;background:var(--god)}
 .bonus{display:flex;align-items:center;gap:8px;font-size:13.5px;line-height:1.25}
 .bonus + .bonus{margin-top:6px}
+.bonus img.bi{width:20px;height:20px;flex:none;opacity:.92}
+.bcard-head img.bi.lg{width:30px;height:30px;flex:none}
 .pcs{font-family:var(--font-mono);font-size:10.5px;color:var(--faint);border:1px solid var(--line-2);padding:1px 5px;border-radius:2px;flex:none}
 .tier.sm{width:20px;height:20px;font-size:13px;flex:none}
 .piece{appearance:none;position:relative;width:48px;height:48px;display:inline-grid;place-items:center;background:var(--panel-2);border:2px solid var(--line-2);color:var(--faint);cursor:pointer;border-radius:2px}
@@ -788,7 +842,8 @@ const fn = n => n ? `<sup class="fn" title="${esc(NOTES[n] || "")}">[${n}]</sup>
 function lines(arr){ return `<div class="lines">${arr.map(x => Array.isArray(x) ? `<s title="Struck on the sheet">${esc(x[0])}</s>` : `<span>${esc(x)}</span>`).join("")}</div>`; }
 function thumb(w, big){
   const m = marks[w.id] || "";
-  return `<div class="thumb ${m} ${big?"big":""}" data-thumb="${w.id}"><img src="${iconURL("w", w.id)}" alt="" decoding="async"></div>`;
+  if(big) return `<div class="thumb ${m} big" data-thumb="${w.id}"><img src="${iconURL("w", w.id)}" alt="" decoding="async"></div>`;
+  return `<button type="button" class="thumb ${m}" data-thumb="${w.id}" data-act="shot" data-id="${w.id}" aria-label="View the full image of ${esc(w.name)}" title="View full image"><img src="${iconURL("w", w.id)}" alt="" decoding="async"></button>`;
 }
 const perkName = x => Array.isArray(x) ? x[0] : x;
 function ico(kind, id, label, cls){
@@ -801,6 +856,38 @@ function frameCell(w){ return w.frame ? ico("t", w.fi, w.frame + (w.frameNote ? 
 function originCell(w){
   if(!w.origin || w.origin === "None") return '<span class="dim">—</span>';
   return ico("t", w.oi, w.origin + (w.oriX ? " (struck on the sheet)" : ""), w.oriX ? "x" : "");
+}
+function dItem(name, icon, struck, note){
+  return `<li class="${struck?"x":""}">${icon?`<img src="${icon}" alt="">`:""}<span>${struck?`<s title="Struck on the sheet">${esc(name)}</s>`:esc(name)}${note?fn(note):""}</span></li>`;
+}
+function dBox(label, items, cls){
+  return `<section class="dbox ${cls||""}"><h4>${label}</h4><ul>${items.length ? items.join("") : '<li class="none">None</li>'}</ul></section>`;
+}
+function detailPanel(w){
+  const list = arr => arr.map(x => { const n = perkName(x), id = (w.pi||{})[n]; return dItem(n, id ? iconURL("t", id) : "", Array.isArray(x)); });
+  const mw = (w.mw || "").split("/").map(x => x.trim()).filter(Boolean).map(st => { const id = (w.mwi||{})[st]; return dItem(st, id ? iconURL("t", id) : "", false); });
+  const perks = arr => arr.map(x => { const n = perkName(x), id = (w.pi||{})[n]; return dItem(n, id ? iconURL("t", id) : "", Array.isArray(x)); });
+  const frame = w.frame ? [dItem(w.frame, w.fi ? iconURL("t", w.fi) : "", false, w.frameNote)] : [];
+  const origin = w.origin && w.origin !== "None" ? [dItem(w.origin, w.oi ? iconURL("t", w.oi) : "", !!w.oriX)] : [];
+  const statLabel = w.stats.map(s => s[0]).join(" / ") || "Ammo";
+  const notes = [w.frameNote, ...w.stats.map(s => s[3])].filter(Boolean);
+  return `<div class="dpanel">
+    <div class="dbuild">
+      ${dBox("Frame", frame, "info")}
+      ${dBox("Barrel", list(w.barrel))}
+      ${dBox("Mag", list(w.mag))}
+      ${dBox("Masterwork", mw)}
+      ${dBox("Perk 1", perks(w.p1), "dup")}
+      ${dBox("Perk 2", perks(w.p2), "dup")}
+      ${dBox("Origin Trait", origin)}
+    </div>
+    <div class="dmeta">
+      <div class="dstat"><h4>${esc(statLabel)}</h4>${statsCell(w)}</div>
+      <div class="dstat"><h4>Season</h4><b>S${esc(w.season)}</b></div>
+      <div class="dstat"><h4>Upgrade</h4><b class="up ${w.up==="Yes"?"yes":""}">${w.up==="Yes"?"⬆ ":""}${esc(w.up)}</b></div>
+      <div class="dnotes"><h4>Notes</h4><p>${esc(w.notes) || '<span class="dim">No notes</span>'}</p>${notes.map(n => `<div class="foot">[${n}] ${esc(NOTES[n]||"")}</div>`).join("")}</div>
+    </div>
+  </div>`;
 }
 function perkNamed(w, arr, rows){
   const cells = arr.map(x => { const n = perkName(x), struck = Array.isArray(x), id = (w.pi||{})[n];
@@ -953,19 +1040,7 @@ function weaponList(mode){
     const statusBtn = `<button type="button" class="status-btn ${m?"s-"+m:""}" data-act="status" data-id="${w.id}" aria-haspopup="menu" aria-label="Mark ${esc(w.name)}${m?" (currently "+MLABEL[m]+")":""}">${m ? I[m] : I.plus}</button>`;
     const nameBlock = `<div class="nm"><div class="nm-txt"><button type="button" class="name-btn" data-act="open" data-id="${w.id}" aria-expanded="${open}"><span class="wname">${esc(w.name)}</span></button>${w.var?`<div class="variant">${esc(w.var)}</div>`:""}<div class="wsub">${showArch?esc(w.arch)+" · ":""}S${esc(w.season)}${m?` · <span class="mtag mt-${m}">${MLABEL[m]}</span>`:""}</div></div><button type="button" class="expand" data-act="open" data-id="${w.id}" aria-label="${open?"Hide":"Show"} details for ${esc(w.name)}">${I.chev}</button></div>`;
     const notes = open ? [w.frameNote, ...w.stats.map(s => s[3])].filter(Boolean) : [];
-    const detailGrid = open ? `<div class="detail-grid">
-      <div class="dup"><div class="k">Frame</div>${esc(w.frame || "—")}</div>
-      <div class="dup"><div class="k">Perk 1</div>${lines(w.p1)}</div>
-      <div class="dup"><div class="k">Perk 2</div>${lines(w.p2)}</div>
-      <div><div class="k">Origin Trait</div>${w.oriX?`<s>${esc(w.origin)}</s>`:esc(w.origin)}</div>
-      <div><div class="k">Barrel</div>${lines(w.barrel)}</div>
-      <div><div class="k">Mag</div>${lines(w.mag)}</div>
-      <div><div class="k">Masterwork</div>${esc(w.mw)}</div>
-      <div><div class="k">${S.arch==="Swords"?"Charge / Impact":"Ammo"}</div>${statsCell(w)}</div>
-      <div><div class="k">Season</div>${esc(w.season)}</div>
-      <div><div class="k">Upgrade <span style="font-family:var(--font-body);font-size:13px;letter-spacing:0">⬆</span></div>${esc(w.up)}</div>
-      <div class="notes"><div class="k">Notes</div>${esc(w.notes) || '<span class="dim">No notes</span>'}${notes.map(n => `<div class="foot">[${n}] ${esc(NOTES[n]||"")}</div>`).join("")}</div>
-    </div>` : "";
+    const detailGrid = open ? detailPanel(w) : "";
     if(PHONE.matches){
       return `<article class="wcard ${open?"open":""}">
         <div class="wc-top">${statusBtn}${thumb(w)}<div class="wc-name">${nameBlock}</div>${tierCell(w.tier, w.rank)}</div>
@@ -1044,10 +1119,10 @@ function armorList(mode){
       return `<button type="button" class="piece ${sel.length?"has":""} ${want.length?"want":""}" data-act="piece" data-set="${s.id}" data-piece="${p}" aria-haspopup="menu" aria-label="${label}">${PIECE_SVG[p]}${want.length&&sel.length?`<span class="want-flag" title="Also looking for more">${I.looking}</span>`:""}${want.length?badgeRow(want,"want"):""}${sel.length?badgeRow(sel,""):""}</button>`;
     });
     const cells = btns.map(b => `<td class="c-piece">${b}</td>`).join("");
-    const bonuses = s.bonuses.map(b => `<div class="bonus"><span class="pcs">${b.pcs}pc</span><span class="tier sm" style="--c:${tierVar(b.tier)}">${b.tier}</span><span>${esc(b.name)}</span></div>`).join("");
+    const bonuses = s.bonuses.map(b => `<div class="bonus"><span class="pcs">${b.pcs}pc</span>${b.bi?`<img class="bi" src="${iconURL("t", b.bi)}" alt="">`:""}<span class="tier sm" style="--c:${tierVar(b.tier)}">${b.tier}</span><span>${esc(b.name)}</span></div>`).join("");
     const setCell = `<div class="set"><div class="set-icon"><img src="${iconURL("s", s.id)}" alt="" decoding="async"></div><div class="set-txt"><div class="nm"><button type="button" class="name-btn" data-act="open" data-id="set:${s.id}" aria-expanded="${open}"><span class="set-name wname">${esc(s.name)}</span></button><button type="button" class="expand" data-act="open" data-id="set:${s.id}" aria-label="${open?"Hide":"Show"} bonus details for ${esc(s.name)}">${I.chev}</button></div><div class="set-meta"><span>${esc(s.source)}</span><span class="mini-bar"><i style="width:${n*20}%"></i></span><span class="count">${n}/5</span></div></div></div>`;
     const detail = open ? `<div class="bonus-cards">${s.bonuses.map(b => `<div class="bcard">
-      <div class="bcard-head"><span class="pcs">${b.pcs} piece</span><strong>${esc(b.name)}</strong>${tierCell(b.tier, b.rank)}${b.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</div>
+      <div class="bcard-head"><span class="pcs">${b.pcs} piece</span>${b.bi?`<img class="bi lg" src="${iconURL("t", b.bi)}" alt="">`:""}<strong>${esc(b.name)}</strong>${tierCell(b.tier, b.rank)}${b.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</div>
       <dl><dt>Trigger</dt><dd>${esc(b.trigger)}</dd><dt>Effect</dt><dd>${esc(b.effect)}</dd><dt>Analysis</dt><dd>${esc(b.desc)}</dd></dl></div>`).join("")}</div>` : "";
     if(PHONE.matches){
       return `<article class="acard ${open?"open":""}">${setCell}<div class="bonuses">${bonuses}</div>
@@ -1137,16 +1212,55 @@ const overlay = $("#overlay");
 let lastFocus = null;
 function openModal(html){
   if(overlay.hidden) lastFocus = document.activeElement;
+  overlay.classList.remove("shotlay");
   overlay.innerHTML = `<div class="modal" role="dialog" aria-modal="true" data-act="noop">${html}</div>`;
   overlay.hidden = false;
   const f = overlay.querySelector("[data-autofocus]") || overlay.querySelector("button");
   if(f) f.focus();
 }
 function closeModal(){
-  overlay.hidden = true; overlay.innerHTML = ""; S.edit = null;
+  overlay.hidden = true; overlay.innerHTML = ""; overlay.classList.remove("shotlay"); S.edit = null;
   if(lastFocus && document.contains(lastFocus)) lastFocus.focus();
 }
 const closeX = `<button type="button" class="close" data-act="modal-close" aria-label="Close">${I.clear}</button>`;
+
+/* full weapon image popup. Images are Bungie's weapon screenshots: the website loads them from bungie.net
+   (trying older copies of a reissued weapon if the newest has no art yet); the Claude build can't reach
+   bungie.net, so they ship as one file per weapon section (shots/<section>.json) loaded on first use. */
+const SHOT_SHARDS = {};
+const archSlug = s => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+function loadImg(urls){
+  return urls.reduce((p, u) => p.catch(() => new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(u); im.onerror = no; im.src = u; })), Promise.reject());
+}
+function shotSrc(w){
+  const paths = Array.isArray(w.shot) ? w.shot : w.shot ? [w.shot] : [];
+  if(!paths.length) return Promise.reject(new Error("no image"));
+  if(FB_CONFIG) return loadImg(paths.map(p => "https://www.bungie.net" + p));
+  const k = archSlug(w.arch);
+  if(!SHOT_SHARDS[k]) SHOT_SHARDS[k] = fetch(`shots/${k}.json`).then(r => r.ok ? r.json() : Promise.reject(new Error(r.status))).catch(e => { delete SHOT_SHARDS[k]; throw e; });
+  return SHOT_SHARDS[k].then(m => m[w.id] ? loadImg([m[w.id]]) : Promise.reject(new Error("no image")));
+}
+function shotModal(id){
+  const w = BYID[id]; if(!w) return;
+  const m = marks[id] || "";
+  const status = {god:"God Roll", semi:"Semi-God Roll", looking:"Looking for"}[m];
+  if(overlay.hidden) lastFocus = document.activeElement;
+  overlay.classList.add("shotlay");
+  overlay.innerHTML = `<div class="shotpop" role="dialog" aria-modal="true" aria-label="${esc(w.name)}" data-shot="${id}">
+    <div class="shotframe ${m}" data-act="noop"><div class="ph loading"><img src="${iconURL("w", id)}" alt=""><span>Loading image</span></div></div>
+    <div class="shotcap" data-act="noop"><div><div class="nm2">${esc(w.name)}</div><div class="sub">${esc(w.arch)} · ${esc(w.element)} · S${esc(w.season)} · Tier ${esc(w.tier)}${status?` · <b class="${m}">${status}</b>`:""}</div></div>
+      <button type="button" class="close" data-act="modal-close" aria-label="Close" data-autofocus>${I.clear}</button></div>
+  </div>`;
+  overlay.hidden = false;
+  overlay.querySelector("[data-autofocus]").focus();
+  shotSrc(w).then(src => {
+    const f = overlay.querySelector(".shotframe"); if(!f || overlay.hidden || (overlay.querySelector(".shotpop") || {}).dataset?.shot !== id) return;
+    f.innerHTML = `<img class="full" src="${src}" alt="${esc(w.name)}">`;
+  }).catch(() => {
+    const ph = overlay.querySelector(".shotframe .ph"); if(!ph) return;
+    ph.classList.remove("loading"); ph.querySelector("span").textContent = "Full image not available right now";
+  });
+}
 
 function weaponModal(id){
   const w = BYID[id], m = marks[id];
@@ -1191,12 +1305,11 @@ function infoModal(){
           <li>Weapon tiers, rankings and god roll perks</li>
           <li>Analysis notes for every weapon</li>
           <li>Armor set bonuses and their ratings</li>
-          <li>The frame, perk and origin trait icons</li>
         </ul>
       </div>
       <p>Endgame API checks his sheet every week, so the tiers and rolls here always follow his latest analysis. All credit for that work goes to him.</p>
       <div class="maker">Endgame API made by <b>SteelToe</b></div>
-      <p class="fine">Fan made and not affiliated with Bungie. Destiny 2 and its icons and artwork belong to Bungie.</p>
+      <p class="fine">Weapon, perk, frame, armor set, energy and stun icons come straight from Bungie's Destiny 2 API and refresh with the weekly update. Fan made and not affiliated with Bungie. Destiny 2 and its icons and artwork belong to Bungie.</p>
     </div>
     <div class="modal-foot">
       <a class="btn" href="https://docs.google.com/spreadsheets/d/1JM-0SlxVDAi-C6rGVlLxa-J1WGewEeL8Qvq4htWZHhY/edit" target="_blank" rel="noopener">Open his spreadsheet <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></a>
@@ -1330,6 +1443,7 @@ document.addEventListener("click", e => {
     case "atag-clear": S.aTags = []; render(); return;
     case "vsub": S.vaultSub = k; S.aStat = "all"; render(); return;
     case "open": S.open[id] = !S.open[id]; refreshList(); return;
+    case "shot": shotModal(id); return;
     case "status":
       if(S.menuFor === id && !menu.hidden){ closeMenu(); return; }
       openMenu(t, id); return;
