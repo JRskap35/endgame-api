@@ -1,0 +1,1441 @@
+<title>Endgame API</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a sticky command bar (Weapons / Armor / Vault) and, below it, a sticky category bar (ammo tabs + archetype strip)
+   that stays pinned while the dense item table scrolls underneath. Translucent panels float over the gold linework
+   background. Palette: charcoal + muted gold from the background art; data colors (tiers, ammo, elements, section bands)
+   come straight from the Endgame Analysis sheet. Deliberately single-theme dark. */
+:root{
+  color-scheme: dark;
+  --bg:#0c0e10; --panel:rgba(0,0,0,.15); --veil:rgba(0,0,0,.15); --panel-solid:#131518; --panel-2:rgba(30,32,36,.88);
+  --line:rgba(201,178,119,.13); --line-2:rgba(201,178,119,.26);
+  --fg:#ece8df; --muted:#a59f92; --faint:#706b61;
+  --accent:#c9b277; --accent-dim:#655c39;
+  --god:#3fdc86; --semi:#f3c64a; --look:#9cc6e4;
+  --ammo-primary:#ece8df; --ammo-special:#5ec46a; --ammo-heavy:#a971e6; --ammo-other:#d8b04c; --ammo-all:#e0453a;
+  --el-kinetic:#e8e8e8; --el-solar:#ff7f14; --el-arc:#65f3f7; --el-void:#c089d5; --el-stasis:#4f9aff; --el-strand:#00ec6c;
+  --t-s:#57bb8a; --t-a:#a7c779; --t-b:#ffd666; --t-c:#f5b06b; --t-d:#e67c73; --t-e:#c27ba0; --t-f:#8e7cc3;
+  --sh-weapon:#660000; --sh-info:#783f04; --sh-perks:#274e13; --sh-analysis:#20124d;
+  --st-weapons:#f0a35a; --st-health:#6fd38a; --st-class:#78bff0; --st-grenade:#b88cf0; --st-super:#f3d36a; --st-melee:#f07c7c;
+  --ink:#0c0e10;
+  --hdr:60px;
+  --font-display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --font-body:"Barlow","Helvetica Neue",Arial,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{background:var(--bg)}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--panel-solid)}
+#bgart{position:fixed;inset:0;z-index:-1;background:var(--bg) var(--bgimg) center/cover no-repeat}
+#bgart::after{content:"";position:absolute;inset:0;background:var(--vignette)}
+:root{--vignette:radial-gradient(ellipse at 50% 45%,rgba(12,14,16,.08),rgba(12,14,16,.5) 80%)}
+/* sticky bars show the background art itself (85%), so rows scrolling underneath stay hidden */
+.artfill{background:linear-gradient(var(--veil),var(--veil)) fixed,var(--vignette) fixed,var(--bg) var(--bgimg) center/cover no-repeat fixed}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* top bar */
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:25;border-bottom:1px solid var(--line-2)}
+.topbar-in{max-width:1440px;margin:0 auto;display:flex;align-items:center;gap:0 26px;flex-wrap:wrap;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.brand{display:flex;align-items:center;gap:12px;height:60px;font-family:var(--font-display);font-weight:600;font-size:22px;letter-spacing:.24em;text-transform:uppercase;white-space:nowrap}
+.brand img{width:42px;height:42px;display:block;filter:drop-shadow(0 0 6px rgba(236,232,223,.18))}
+.nav{display:flex;align-self:stretch}
+.nav button{appearance:none;background:none;border:0;cursor:pointer;position:relative;height:60px;padding:0 18px;
+  font-family:var(--font-display);font-weight:600;font-size:17px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.nav button:hover{color:var(--fg)}
+.nav button[aria-current="page"]{color:var(--fg)}
+.nav button[aria-current="page"]::after{content:"";position:absolute;left:14px;right:14px;bottom:-1px;height:2px;background:var(--accent);box-shadow:0 0 10px rgba(201,178,119,.6)}
+.top-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.sync{display:flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);white-space:nowrap}
+.sync .dot{width:7px;height:7px;border-radius:50%;background:var(--c,var(--faint))}
+.acct-av{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--ink);font:700 12px var(--font-body)}
+.acct-av:empty{display:none}
+.acct.in .acct-l{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:440px){ .acct.in .acct-l{display:none} .acct{padding:0 9px} .icon-btn.acct:not(.in) .acct-l{display:inline} .icon-btn.acct .acct-av:not(:empty){display:grid} }
+.info-btn{appearance:none;background:none;border:0;padding:0;margin-left:-2px;width:26px;height:26px;display:grid;place-items:center;color:var(--muted);cursor:pointer;border-radius:50%;flex:none}
+.info-btn svg{width:20px;height:20px}
+.info-btn:hover{color:var(--accent)}
+.credit{border:1px solid var(--line-2);background:rgba(201,178,119,.06);padding:14px 16px;display:grid;gap:6px;border-radius:2px}
+.credit .sheet{font-family:var(--font-display);font-weight:600;font-size:21px;letter-spacing:.06em;text-transform:uppercase;line-height:1.1}
+.credit .by{color:var(--muted)}
+.credit .by b{color:var(--accent);font-weight:600}
+.credit ul{margin:4px 0 0;padding-left:18px;color:var(--fg);display:grid;gap:3px;font-size:14px}
+.fine{font-size:12.5px;color:var(--faint)!important}
+/* phone cards */
+.cards{display:grid;gap:8px}
+.wcard,.acard{border:1px solid var(--line-2);background:var(--veil);border-radius:3px;padding:10px;display:grid;gap:8px}
+.wcard.open,.acard.open{background:rgba(201,178,119,.07)}
+.wc-top{display:grid;grid-template-columns:auto auto 1fr auto;align-items:center;gap:10px}
+.wc-top .thumb{width:44px;height:44px}
+.wc-name .nm{display:flex;align-items:center;gap:2px}
+.wc-name .nm-txt{min-width:0}
+.wc-name .wname{font-size:15px}
+.wc-top .tier-cell{flex-direction:column;gap:1px}
+.wc-top .expand,.acard .expand{flex:none;width:26px;height:26px}
+.wc-info{display:flex;align-items:center;gap:4px;flex-wrap:wrap;padding-top:6px;border-top:1px solid var(--line)}
+.wc-info .ic{width:34px;height:34px}
+.wc-info .ic img{width:28px;height:28px}
+.wc-info .ic img.stun{width:24px;height:24px}
+.wc-info .ic.frame img{width:26px;height:26px}
+.wc-src{margin-left:auto;font-size:12.5px;color:var(--muted);text-align:right;max-width:45%}
+.wc-perks{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line);padding-top:6px}
+.wc-h{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);padding:0 4px 3px}
+.pcol{display:grid;grid-auto-rows:minmax(30px,auto)}
+.pn{display:flex;align-items:center;gap:7px;padding:2px 4px;font-size:13px;line-height:1.2;min-width:0}
+.pn + .pn{border-top:1px solid rgba(201,178,119,.16)}
+.pn img{width:24px;height:24px;flex:none}
+.pn.x{opacity:.45}
+.wcard .detail-grid{padding:6px 2px 2px;border-top:1px solid var(--line);grid-template-columns:1fr 1fr;gap:10px 16px}
+.acard .set{gap:10px}
+.acard .set-txt{min-width:0;flex:1}
+.acard .set-txt .nm{display:flex;align-items:center;gap:2px}
+.acard .bonuses{display:grid;gap:4px;padding-top:6px;border-top:1px solid var(--line)}
+.acard .bonus + .bonus{margin-top:0}
+.ac-pieces{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding-top:8px;border-top:1px solid var(--line)}
+.ac-piece{display:grid;justify-items:center;gap:4px}
+.ac-piece span{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+.acard .bonus-cards{grid-template-columns:1fr}
+.wcard .dup{display:none}
+.maker{display:flex;align-items:center;gap:8px;padding-top:12px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+.maker b{font-family:var(--font-display);font-weight:600;font-size:17px;letter-spacing:.12em;text-transform:uppercase;color:var(--fg)}
+a.btn{text-decoration:none;display:inline-flex;align-items:center;gap:8px}
+a.btn svg{width:14px;height:14px}
+.icon-btn{appearance:none;background:none;border:1px solid var(--line-2);color:var(--muted);height:36px;padding:0 12px;display:flex;align-items:center;gap:8px;cursor:pointer;border-radius:2px;font:500 13px var(--font-body)}
+.icon-btn:hover{color:var(--fg);border-color:var(--faint)}
+.icon-btn svg{width:16px;height:16px}
+
+/* page */
+.wrap{max-width:1440px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 64px}
+.count{font-family:var(--font-mono);font-size:12px;color:var(--faint);letter-spacing:0;font-variant-numeric:tabular-nums}
+
+.catbar{position:sticky;top:calc(env(safe-area-inset-top,0px) + var(--hdr));z-index:20;
+  margin-inline:calc(-1 * max(16px,env(safe-area-inset-left,0px))) calc(-1 * max(16px,env(safe-area-inset-right,0px)));
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  border-bottom:1px solid var(--line-2)}
+.catbar.flat{margin-top:0}
+.ammo-tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--line)}
+.ammo-tabs::-webkit-scrollbar{display:none}
+.ammo-tab{appearance:none;background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;color:var(--muted);
+  font-family:var(--font-display);font-size:18px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;padding:12px 14px 10px;display:flex;align-items:center;gap:9px;white-space:nowrap}
+.ammo-tab:hover{color:var(--fg)}
+.ammo-tab[aria-pressed="true"]{color:var(--fg);border-bottom-color:var(--ammo)}
+.ammo-swatch{width:8px;height:8px;background:var(--ammo);transform:rotate(45deg);box-shadow:0 0 6px color-mix(in srgb,var(--ammo) 60%,transparent)}
+.ammo-tab .count{font-size:11px}
+.chips{display:flex;flex-wrap:nowrap;align-items:center;gap:6px;overflow-x:auto;scrollbar-width:thin;scrollbar-color:var(--line-2) transparent;padding-block:10px;
+  -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent);padding-right:28px}
+.chips:empty{display:none}
+.chip{appearance:none;flex:none;border:1px solid var(--line);background:rgba(255,255,255,.02);color:var(--muted);cursor:pointer;border-radius:2px;
+  font-family:var(--font-display);font-weight:600;font-size:14px;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;display:inline-flex;gap:6px;align-items:baseline;line-height:1.4;white-space:nowrap}
+.chip:hover{color:var(--fg);border-color:var(--line-2)}
+.chip[aria-pressed="true"]{background:var(--fg);color:var(--ink);border-color:var(--fg)}
+.chip .count{font-size:10.5px}
+.chip[aria-pressed="true"] .count{color:var(--ink);opacity:.6}
+.chip.empty{opacity:.4}
+.chip-sep{flex:none;width:2px;height:18px;margin-inline:4px;background:var(--ammo);opacity:.8;border-radius:1px}
+.fgroup .sub{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin:10px 0 6px;width:100%}
+.fgroup .sub:first-of-type{margin-top:0}
+.subtabs{padding-top:14px}
+
+.controls{display:flex;flex-wrap:wrap;gap:10px 12px;align-items:center;padding-block:6px}
+.controls.first{padding-top:14px}
+.search{display:flex;align-items:center;gap:8px;border:1px solid var(--line-2);background:var(--panel);padding:0 10px;height:36px;flex:1 1 220px;max-width:320px;min-width:0;border-radius:2px}
+.search svg{width:15px;height:15px;color:var(--faint);flex:none}
+.search input{background:none;border:0;color:var(--fg);font:inherit;outline:none;width:100%;min-width:0}
+.search:focus-within{border-color:var(--accent)}
+.seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--line-2);border-radius:2px;overflow:hidden}
+.seg button{appearance:none;background:none;border:0;border-right:1px solid var(--line-2);color:var(--muted);font:500 13px var(--font-body);padding:8px 12px;cursor:pointer;display:flex;gap:6px;align-items:center}
+.seg button:last-child{border-right:0}
+.seg button:hover{color:var(--fg)}
+.seg button[aria-pressed="true"]{background:var(--panel-2);color:var(--fg);box-shadow:inset 0 -2px 0 var(--accent)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none;display:inline-block}
+.ctl-label{font-family:var(--font-mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-right:2px}
+.sort-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.sort-pill{display:inline-flex;align-items:stretch;border:1px solid var(--line-2);border-radius:2px}
+.sort-pill button{appearance:none;background:none;border:0;color:var(--muted);font:500 13px var(--font-body);padding:6px 10px;display:inline-flex;align-items:center;gap:7px;cursor:pointer}
+.sort-pill button:hover{color:var(--fg)}
+.sort-pill.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 9%,transparent)}
+.sort-pill.on button{color:var(--fg)}
+.sort-pill .x{border-left:1px solid color-mix(in srgb,var(--accent) 40%,transparent);padding:0 8px;color:var(--muted)}
+.sort-n{font-family:var(--font-mono);font-size:10.5px;background:var(--accent);color:var(--ink);width:16px;height:16px;display:inline-grid;place-items:center;border-radius:50%}
+.sort-dir{font-family:var(--font-mono);font-size:11px;color:var(--accent)}
+.text-btn{appearance:none;background:none;border:0;color:var(--accent);font:500 13px var(--font-body);cursor:pointer;padding:6px 4px}
+.text-btn:hover{text-decoration:underline}
+
+.filters{border:1px solid var(--line);background:var(--panel);margin-block:10px 4px;border-radius:2px}
+.filters summary{cursor:pointer;padding:10px 14px;font-family:var(--font-display);font-weight:600;letter-spacing:.12em;text-transform:uppercase;font-size:15px;list-style:none;display:flex;gap:10px;align-items:center}
+.filters summary::-webkit-details-marker{display:none}
+.filters summary .chev{width:14px;height:14px;color:var(--faint);transition:transform .15s}
+.filters[open] summary .chev{transform:rotate(90deg)}
+.filters .badge-n{font-family:var(--font-mono);font-size:11px;background:var(--accent);color:var(--ink);padding:1px 7px;border-radius:9px;letter-spacing:0}
+.filters .clear{margin-left:auto;letter-spacing:0;text-transform:none;font-family:var(--font-body)}
+.fgroups{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px 22px;padding:4px 14px 16px}
+.fgroup.wide{grid-column:1/-1}
+.fgroup h3{font-family:var(--font-mono);font-weight:500;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin:0 0 8px}
+.fvals{display:flex;flex-wrap:wrap;gap:6px}
+.fv{appearance:none;background:none;border:1px solid var(--line-2);color:var(--muted);font:500 13px var(--font-body);padding:4px 10px;border-radius:2px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.fv:hover{color:var(--fg)}
+.fv[aria-pressed="true"]{border-color:var(--accent);color:var(--fg);background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.fv img{width:16px;height:16px}
+
+.result{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:var(--faint);font-family:var(--font-mono);font-size:12px;letter-spacing:.06em;padding-block:14px 8px;text-transform:uppercase}
+
+/* tables */
+.table-wrap{position:relative;overflow-x:auto;border:1px solid var(--line-2);background:var(--veil);border-radius:2px}
+table{width:100%;border-collapse:separate;border-spacing:0}
+.wtable{min-width:1180px;table-layout:fixed}
+.wtable th{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;letter-spacing:.1em}
+.wtable th .hs{justify-content:center}
+.wtable td{text-align:center}
+.wtable .c-name .nm{display:flex;align-items:center;justify-content:center;gap:4px}
+.wtable .c-name .nm-txt{min-width:0}
+.wtable .expand{flex:none;width:26px;height:26px}
+.wtable .tier-cell{justify-content:center}
+.wtable .thumb{margin-inline:auto}
+.wtable .status-btn{margin-inline:auto}
+.wtable td{padding:4px 8px}
+.atable td{padding-block:5px}
+.wtable th{padding:8px}
+.atable{min-width:1000px;table-layout:fixed}
+.atable th{text-align:center;white-space:nowrap;letter-spacing:.1em}
+.atable td{text-align:center}
+.atable .set{justify-content:flex-start;text-align:left;padding-left:6px}
+.atable .set-txt{min-width:0}
+.atable .set-txt .nm{display:flex;align-items:center;gap:4px}
+.atable .expand{flex:none;width:26px;height:26px}
+.atable .bonuses{display:grid;text-align:left;justify-items:start;padding-left:14px}
+.atable th:nth-child(1),.atable th:nth-child(2){text-align:left;padding-left:20px}
+.atable tr.bands th{text-align:center!important;padding-left:8px!important}
+tr.bands .b-bonus{background:var(--sh-perks)!important} tr.bands .b-pieces{background:var(--sh-analysis)!important}
+th{background:var(--veil)!important;font-family:var(--font-mono);font-weight:500;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);text-align:left;padding:10px 10px;border-bottom:1px solid var(--line-2);background:var(--panel);white-space:nowrap}
+th .hs{appearance:none;background:none;border:0;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer;padding:0;display:inline-flex;gap:6px;align-items:center}
+th .hs:hover{color:var(--fg)}
+th .hs.on{color:var(--accent)}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle;font-size:14px}
+tbody tr:last-child td{border-bottom:0}
+tr.row:hover td{background:rgba(201,178,119,.05)}
+tr.row.open td{background:rgba(201,178,119,.07);border-bottom-color:transparent}
+tr.detail td{background:rgba(201,178,119,.07)}
+.c-status{width:48px}
+.c-thumb{width:66px}
+.c-name{min-width:168px}
+.c-ico{width:46px;text-align:center}
+.c-src{min-width:104px;max-width:150px;font-size:13.5px;line-height:1.25}
+.c-perk{width:44px;padding-inline:0!important;text-align:center}
+.c-tier{width:78px}
+tr.bands th{padding:3px 8px;font-family:var(--font-display);font-weight:600;font-size:12px;letter-spacing:.16em;color:#fff;text-align:center;border-bottom:0}
+tr.bands .b-weapon{background:var(--sh-weapon)!important} tr.bands .b-info{background:var(--sh-info)!important} tr.bands .b-perks{background:var(--sh-perks)!important} tr.bands .b-analysis{background:var(--sh-analysis)!important}
+.ic{display:inline-grid;place-items:center;width:40px;height:40px;border-radius:3px;cursor:default;vertical-align:middle}
+.ic img{width:34px;height:34px;display:block}
+.ic img.stun{width:30px;height:30px}
+.pk .ic{width:28px;height:28px}
+.pk .ic img{width:26px;height:26px}
+.ic.frame img{width:32px;height:32px;opacity:.95}
+.ic:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.ic.txt{width:auto;min-width:40px;font-size:11.5px;line-height:1.1;color:var(--muted);padding:0 2px}
+.ic.x{position:relative;opacity:.35}
+.ic.x::after{content:"";position:absolute;left:3px;right:3px;top:50%;height:1.5px;background:var(--fg);transform:rotate(-35deg)}
+.pk{display:grid;grid-auto-rows:30px;justify-items:stretch;align-items:stretch}
+.pk .slot{display:grid;place-items:center}
+.pk .slot + .slot{border-top:1px solid rgba(201,178,119,.16)}
+
+#tip{position:fixed;z-index:80;pointer-events:none;background:rgba(10,11,13,.96);border:1px solid var(--line-2);color:var(--fg);font:500 12.5px/1.3 var(--font-body);padding:5px 9px;border-radius:2px;max-width:240px;box-shadow:0 6px 18px rgba(0,0,0,.5);white-space:normal}
+#tip::after{content:"";position:absolute;left:var(--ax,50%);bottom:-5px;width:8px;height:8px;margin-left:-4px;background:rgba(10,11,13,.96);border-right:1px solid var(--line-2);border-bottom:1px solid var(--line-2);transform:rotate(45deg)}
+#tip.below::after{bottom:auto;top:-5px;transform:rotate(225deg)}
+.nowrap{white-space:nowrap}
+.c-piece{text-align:center;width:84px}
+.c-x{width:40px;text-align:right}
+.wname{font-weight:600;font-size:15.5px;line-height:1.2}
+.name-btn{appearance:none;background:none;border:0;padding:0;text-align:left;cursor:pointer;color:var(--fg)}
+.name-btn:hover .wname{color:var(--accent)}
+.variant{display:block;font-style:italic;font-size:12px;color:var(--accent);margin-top:1px}
+.wsub{color:var(--muted);font-size:12.5px;margin-top:2px}
+.mtag{font-weight:600}
+.mt-god{color:var(--god)} .mt-semi{color:var(--semi)} .mt-looking{color:var(--look)}
+.el{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.el .dot{width:9px;height:9px;transform:rotate(45deg);border-radius:1px}
+.dim{color:var(--faint)}
+s{color:var(--faint);text-decoration-thickness:1.5px}
+.lines{display:grid;gap:1px;line-height:1.3}
+.stun{width:20px;height:20px;display:block;opacity:.92}
+.stats-cell{display:flex;gap:4px;flex-wrap:wrap}
+.ammo{display:inline-flex;align-items:baseline;gap:4px;min-width:36px;justify-content:center;padding:3px 7px;border-radius:2px;font-family:var(--font-mono);font-size:13px;font-weight:500;color:var(--ink);background:var(--c,var(--panel-2));font-variant-numeric:tabular-nums}
+.ammo.plain{color:var(--fg);border:1px solid var(--line-2)}
+.ammo.plain sup.fn{color:var(--accent)}
+.ammo small{font-size:9.5px;opacity:.75;font-family:var(--font-body);text-transform:uppercase;letter-spacing:.06em}
+sup.fn{font-family:var(--font-mono);font-size:9.5px;color:var(--accent);cursor:help;margin-left:1px}
+.ammo sup.fn{color:var(--ink)}
+.tier-cell{display:flex;align-items:center;gap:6px}
+.tier{display:inline-grid;place-items:center;width:28px;height:28px;font-family:var(--font-display);font-weight:700;font-size:17px;color:var(--ink);border-radius:2px;background:var(--c)}
+.rank{font-family:var(--font-mono);font-size:11px;color:var(--faint);min-width:22px}
+.expand{appearance:none;background:none;border:1px solid transparent;color:var(--faint);width:30px;height:30px;display:grid;place-items:center;cursor:pointer;border-radius:2px}
+.expand:hover{color:var(--fg);border-color:var(--line-2)}
+.expand svg{width:14px;height:14px;transition:transform .15s}
+.open .expand svg{transform:rotate(90deg)}
+tr.detail td{background:rgba(201,178,119,.07);padding:4px 10px 16px 134px;text-align:left}
+.detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,max-content));gap:12px 34px;align-items:start}
+.detail-grid .k{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:3px}
+.detail-grid .notes{grid-column:1/-1;max-width:80ch;color:var(--fg)}
+.foot{color:var(--muted);font-size:13px}
+
+/* status button + thumbs */
+.status-btn{appearance:none;width:32px;height:32px;display:grid;place-items:center;border:1px dashed var(--line-2);background:transparent;color:var(--faint);cursor:pointer;border-radius:2px}
+.status-btn:hover{color:var(--fg);border-color:var(--muted)}
+.status-btn svg{width:17px;height:17px}
+.status-btn.s-god{border:1px solid var(--god);color:var(--god);background:rgba(63,220,134,.1)}
+.status-btn.s-semi{border:1px solid var(--semi);color:var(--semi);background:rgba(243,198,74,.1)}
+.status-btn.s-looking{border:1px solid var(--look);color:var(--look);background:rgba(156,198,228,.08)}
+.thumb{position:relative;width:46px;height:46px;overflow:hidden;border:2px solid var(--line-2);border-radius:2px;background:var(--panel-2)}
+.thumb img{display:block;width:100%;height:100%;object-fit:cover}
+.thumb.big{width:88px;height:88px}
+.thumb.god{border-color:var(--god);box-shadow:0 0 0 1px rgba(63,220,134,.35),0 0 16px rgba(63,220,134,.55)}
+.thumb.god::after{content:"";position:absolute;inset:-50%;background:linear-gradient(115deg,transparent 42%,rgba(220,255,236,.6) 50%,transparent 58%);animation:sheen 2.8s ease-in-out infinite;pointer-events:none}
+.thumb.semi{border-color:var(--semi);box-shadow:0 0 0 1px rgba(243,198,74,.3),0 0 12px rgba(243,198,74,.4)}
+.thumb.looking{border-style:dashed;border-color:var(--look)}
+.thumb.pop{animation:pop .5s cubic-bezier(.3,1.6,.5,1)}
+@keyframes sheen{0%{transform:translateX(-55%)}55%,100%{transform:translateX(55%)}}
+@keyframes pop{0%{transform:scale(.8)}100%{transform:scale(1)}}
+
+/* armor */
+.set{display:flex;align-items:center;gap:12px;min-width:0}
+.set-icon{width:40px;height:40px;flex:none;border-radius:2px;background:#000;border:1px solid var(--line-2);overflow:hidden}
+.set-icon img{width:100%;height:100%;display:block}
+.set-name{font-weight:600;font-size:15.5px;line-height:1.2}
+.set-meta{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12.5px;margin-top:3px;flex-wrap:wrap}
+.mini-bar{width:56px;height:4px;background:var(--line-2);border-radius:2px;overflow:hidden}
+.mini-bar i{display:block;height:100%;background:var(--god)}
+.bonus{display:flex;align-items:center;gap:8px;font-size:13.5px;line-height:1.25}
+.bonus + .bonus{margin-top:6px}
+.pcs{font-family:var(--font-mono);font-size:10.5px;color:var(--faint);border:1px solid var(--line-2);padding:1px 5px;border-radius:2px;flex:none}
+.tier.sm{width:20px;height:20px;font-size:13px;flex:none}
+.piece{appearance:none;position:relative;width:48px;height:48px;display:inline-grid;place-items:center;background:var(--panel-2);border:2px solid var(--line-2);color:var(--faint);cursor:pointer;border-radius:2px}
+.piece:hover{border-color:var(--faint);color:var(--muted)}
+.piece .glyph{width:30px;height:30px}
+.piece.has{border-color:var(--god);color:var(--fg);box-shadow:0 0 12px rgba(63,220,134,.3);background:linear-gradient(160deg,rgba(63,220,134,.14),var(--panel-2) 70%)}
+.badges{position:absolute;right:-6px;bottom:-6px;display:flex;gap:2px}
+.badges.want{right:auto;left:-6px}
+.sbadge.want{border-style:dashed;border-color:var(--look)}
+.piece.want{border-style:dashed;border-color:var(--look);color:var(--muted);background:linear-gradient(160deg,rgba(156,198,228,.1),var(--panel-2) 70%)}
+.piece.has.want{border-style:solid;border-color:var(--god)}
+.piece .want-flag{position:absolute;top:-7px;right:-7px;width:18px;height:18px;border-radius:50%;background:var(--ink);border:1.5px solid var(--look);color:var(--look);display:grid;place-items:center}
+.piece .want-flag svg{width:10px;height:10px}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;color:var(--muted);font-size:12.5px}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.legend i{width:14px;height:14px;border:2px solid var(--line-2);border-radius:2px;display:inline-block}
+.legend i.h{border-color:var(--god)} .legend i.w{border-style:dashed;border-color:var(--look)}
+.modal-head h2 .mode{font-size:14px;letter-spacing:.12em;margin-left:10px}
+.modal-head h2 .mode.have{color:var(--god)} .modal-head h2 .mode.want{color:var(--look)}
+.sbadge{width:22px;height:22px;border-radius:3px;background:var(--ink);display:grid;place-items:center;border:1.5px solid var(--sc);box-shadow:0 0 0 1.5px var(--bg)}
+.sbadge img{width:16px;height:16px;display:block}
+.sbadge.more{background:var(--fg);color:var(--ink);font:600 9.5px var(--font-mono);width:auto;min-width:22px;padding:0 3px;border-color:var(--fg)}
+tr.detail.adetail td{padding-left:72px}
+.bonus-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.bcard{border:1px solid var(--line-2);background:rgba(0,0,0,.3);padding:12px 14px;display:grid;gap:8px;border-radius:2px}
+.bcard-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.bcard-head strong{font-family:var(--font-display);font-size:18px;letter-spacing:.06em;text-transform:uppercase}
+.tag{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted);border:1px solid var(--line-2);padding:1px 6px;border-radius:9px}
+.bcard dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13.5px}
+.bcard dt{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);padding-top:2px}
+.bcard dd{margin:0;white-space:pre-line}
+
+/* vault */
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:1px;background:transparent;border:1px solid var(--line);margin-block:4px 22px;border-radius:2px;overflow:hidden}
+.stat{background:var(--veil);box-shadow:0 0 0 1px var(--line);padding:14px 16px 16px;display:grid;gap:6px;align-content:start}
+.stat .k{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.stat .v{font-family:var(--font-display);font-weight:700;font-size:36px;line-height:1;font-variant-numeric:tabular-nums}
+.stat .v small{font-size:18px;color:var(--faint);font-weight:600}
+.bar{height:4px;background:var(--line-2);border-radius:2px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--god)}
+.ammo-progress{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px 22px;margin:-8px 0 22px}
+.ap{display:grid;gap:5px}
+.ap-top{display:flex;justify-content:space-between;font-family:var(--font-display);font-weight:600;letter-spacing:.1em;text-transform:uppercase;font-size:14px}
+.ap .bar i{background:var(--ammo)}
+.subtabs{display:flex;border-bottom:1px solid var(--line);margin-bottom:6px}
+.subtab{appearance:none;background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;color:var(--muted);
+  font-family:var(--font-display);font-size:22px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:8px 18px 9px 0;margin-right:22px}
+.subtab:hover{color:var(--fg)}
+.subtab[aria-pressed="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.empty-state{border:1px dashed var(--line-2);padding:40px 20px;text-align:center;color:var(--muted);display:grid;gap:12px;justify-items:center}
+.empty-state strong{font-family:var(--font-display);font-size:22px;letter-spacing:.08em;text-transform:uppercase;color:var(--fg)}
+
+/* buttons, modal, menu, toast */
+.btn{appearance:none;border:1px solid var(--line-2);background:var(--panel-2);color:var(--fg);font:600 14px var(--font-body);padding:9px 16px;cursor:pointer;border-radius:2px}
+.btn:hover{border-color:var(--faint)}
+.btn.primary{background:var(--god);border-color:var(--god);color:#06200f}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{background:none;border-color:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--fg)}
+.overlay{position:fixed;inset:0;z-index:50;background:rgba(4,7,11,.76);backdrop-filter:blur(3px);display:grid;place-items:center;
+  padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));animation:fade .15s ease-out}
+.modal{width:min(500px,100%);max-height:100%;overflow:auto;background:var(--panel-solid);border:1px solid var(--line-2);box-shadow:0 24px 70px rgba(0,0,0,.6);border-radius:2px;animation:rise .18s ease-out}
+.modal-head{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--panel-2)}
+.modal-head h2{font-family:var(--font-display);font-size:20px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin:0}
+.modal-head .close{appearance:none;background:none;border:0;color:var(--muted);cursor:pointer;width:30px;height:30px;display:grid;place-items:center}
+.modal-head .close svg{width:18px;height:18px}
+.modal-head .close:hover{color:var(--fg)}
+.modal-body{padding:18px;display:grid;gap:16px}
+.modal-body p{margin:0;color:var(--muted)}
+.modal-foot{padding:12px 18px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:10px;align-items:center;flex-wrap:wrap}
+.modal-foot .spacer{margin-right:auto}
+.wm-hero{display:flex;gap:16px;align-items:center}
+.wm-hero .wname{font-size:22px}
+.target{display:grid;grid-template-columns:1fr 1fr;gap:10px;border:1px solid var(--line);padding:10px 12px;background:var(--panel-2);border-radius:2px;font-size:13.5px}
+.target .k{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:3px}
+.rolls{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.roll{appearance:none;text-align:left;background:var(--panel-2);border:1px solid var(--line-2);padding:14px;cursor:pointer;display:grid;gap:5px;border-radius:2px}
+.roll .rt{font-family:var(--font-display);font-size:20px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.roll .rd{color:var(--muted);font-size:13px}
+.roll.god .rt{color:var(--god)} .roll.semi .rt{color:var(--semi)}
+.roll.god:hover,.roll.god:focus-visible,.roll.god[aria-pressed="true"]{border-color:var(--god);box-shadow:0 0 0 1px var(--god),0 0 20px rgba(63,220,134,.22)}
+.roll.semi:hover,.roll.semi:focus-visible,.roll.semi[aria-pressed="true"]{border-color:var(--semi);box-shadow:0 0 0 1px var(--semi),0 0 20px rgba(243,198,74,.2)}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.stats .row-label{grid-column:1/-1;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin:6px 0 -2px}
+.stat-t{appearance:none;position:relative;background:var(--panel-2);border:1px solid var(--line-2);color:var(--muted);padding:10px 6px 9px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;font:600 13px var(--font-body);border-radius:2px;text-align:center;line-height:1.15}
+.stat-t:hover{color:var(--fg);border-color:var(--faint)}
+.stat-t .ico{width:40px;height:40px;display:grid;place-items:center;border-radius:3px;background:var(--ink)}
+.stat-t .ico img{width:32px;height:32px;display:block}
+.stat-t[aria-pressed="true"]{border-color:var(--sc);color:var(--fg);background:color-mix(in srgb,var(--sc) 13%,var(--panel-2));box-shadow:0 0 0 1px var(--sc)}
+.stat-t[aria-pressed="true"] .ico{background:color-mix(in srgb,var(--sc) 35%,var(--ink))}
+.stat-t .tick{position:absolute;top:5px;right:6px;width:12px;height:12px;color:var(--sc);opacity:0}
+.stat-t .tick svg{width:12px;height:12px}
+.stat-t[aria-pressed="true"] .tick{opacity:1}
+.piece-hero{display:flex;gap:14px;align-items:center}
+.menu{position:fixed;z-index:60;min-width:200px;background:var(--panel-2);border:1px solid var(--line-2);box-shadow:0 14px 34px rgba(0,0,0,.55);padding:6px;display:grid;border-radius:2px}
+.menu .mh{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);padding:6px 10px;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.menu button{appearance:none;background:none;border:0;text-align:left;padding:9px 10px;font:500 14px var(--font-body);display:flex;gap:10px;align-items:center;cursor:pointer;border-radius:2px}
+.menu button:hover,.menu button:focus-visible{background:var(--line)}
+.menu svg{width:16px;height:16px}
+.menu .sep{height:1px;background:var(--line-2);margin:4px 2px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--panel-2);border:1px solid var(--line-2);padding:10px 16px;z-index:70;font-size:14px;box-shadow:0 10px 30px rgba(0,0,0,.5);border-radius:2px;max-width:calc(100% - 32px);animation:rise .2s ease-out}
+.file-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.file-row input[type=file]{color:var(--muted);font:13px var(--font-body);max-width:100%}
+.sound-state{font-family:var(--font-mono);font-size:12px;color:var(--faint)}
+#confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:100}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes rise{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+
+@media (max-width:760px){
+  .topbar-in{gap:0 12px}
+  .nav{order:3;width:100%;border-top:1px solid var(--line)}
+  .nav button{flex:1;justify-content:center;height:46px;padding:0 6px;font-size:15px;letter-spacing:.14em}
+  .brand{height:54px}
+  .sync .label{display:none}
+  h1{font-size:36px}
+  .ammo-tab{font-size:16px;padding:10px 14px}
+  tr.detail td,tr.detail.adetail td{padding-left:14px}
+  .seg{flex-wrap:nowrap;overflow-x:auto;max-width:100%;scrollbar-width:none}
+  .seg::-webkit-scrollbar{display:none}
+  .seg button{flex:none;white-space:nowrap}
+  .subtab{font-size:18px;white-space:nowrap;margin-right:16px}
+  .summary{grid-template-columns:repeat(2,1fr)}
+  .summary .stat:last-child:nth-child(odd){grid-column:1/-1}
+  .legend span:last-child{display:none}
+}
+@media (max-width:440px){
+  .topbar-in{gap:0 8px}
+  .brand{font-size:16px;letter-spacing:.1em;gap:8px}
+  .brand img{width:32px;height:32px}
+  .info-btn{width:24px}
+  .top-right{gap:6px}
+  .icon-btn{padding:0 8px}
+  .rolls,.target{grid-template-columns:1fr}
+  .icon-btn span{display:none}
+}
+@media (max-width:380px){
+  .brand{letter-spacing:.05em;gap:6px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+
+<div id="bgart" aria-hidden="true"></div>
+<header class="topbar artfill">
+  <div class="topbar-in">
+    <div class="brand">
+      <img id="logo" src="__LOGO__" alt="">
+      Endgame API
+      <button type="button" class="info-btn" data-act="info" aria-label="About Endgame API and credits" data-tip="Credits">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v6"/><circle cx="12" cy="7.6" r="1.1" fill="currentColor" stroke="none"/></svg>
+      </button>
+    </div>
+    <nav class="nav" aria-label="Sections">
+      <button type="button" data-act="nav" data-view="weapons">Weapons</button>
+      <button type="button" data-act="nav" data-view="armor">Armor</button>
+      <button type="button" data-act="nav" data-view="vault">Vault <span class="count" id="navCount"></span></button>
+    </nav>
+    <div class="top-right">
+      <span class="sync" id="sync" role="status"><span class="dot"></span><span class="label">Loading</span></span>
+      <button type="button" class="icon-btn acct" id="acct" data-act="acct" aria-haspopup="menu" hidden><span class="acct-av" aria-hidden="true"></span><span class="acct-l">Sign in</span></button>
+      <button type="button" class="icon-btn" data-act="sound" aria-label="God roll sound settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+        <span>Sound</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap" id="main"></main>
+
+<div class="overlay" id="overlay" data-act="overlay" hidden></div>
+<div class="menu" id="menu" role="menu" hidden></div>
+<div class="toast" id="toast" role="status" hidden></div>
+<div id="tip" role="tooltip" hidden></div>
+<canvas id="confetti" hidden></canvas>
+
+<script id="vault-data" type="application/json">__DATA__</script>
+<script id="vault-icons" type="application/json">__ICONS__</script>
+<script id="vault-stat-icons" type="application/json">__STATICONS__</script>
+<script id="vault-trait-icons" type="application/json">__TICONS__</script>
+<script id="vault-elements" type="application/json">__ELEMENTS__</script>
+<script id="vault-firebase" type="application/json">__FIREBASE__</script>
+<input type="file" id="importFile" accept="application/json,.json" hidden>
+<script>
+(function(){
+"use strict";
+
+/* ================= DATA (from Destiny 2: Endgame Analysis) ================= */
+const D = JSON.parse(document.getElementById("vault-data").textContent);
+const ICON_SRC = JSON.parse(document.getElementById("vault-icons").textContent);
+ICON_SRC.t = JSON.parse(document.getElementById("vault-trait-icons").textContent);
+ICON_SRC.e = JSON.parse(document.getElementById("vault-elements").textContent);
+document.documentElement.style.setProperty("--bgimg", 'url("__BG__")');
+const AMMO = [
+  {key:"primary", label:"Primary"},
+  {key:"special", label:"Secondary"},
+  {key:"heavy",   label:"Heavy"},
+  {key:"other",   label:"Other"}
+].map(a => ({...a, archs:D.ammo[a.key]}));
+const AMMO_TABS = [{key:"all", label:"All Weapons", archs:AMMO.flatMap(a => a.archs)}, ...AMMO];
+const AMMO_OF_ARCH = Object.fromEntries(AMMO.flatMap(a => a.archs.map(x => [x, a.key])));
+const WEAPONS = D.weapons;
+// activities: split combined sources ("Xur, Dares") and tidy spelling variants from the sheet
+const ACT_FIX = {"Cosmodrom e":"Cosmodrome","NODE. OVRD. AVALON":"NODE.OVRD. AVALON","Kell's Fall?":"Kell's Fall","?":"Unknown","":"Unknown"};
+WEAPONS.forEach(w => { w.acts = [...new Set(w.source.split(",").map(x => x.trim()).map(x => ACT_FIX[x] ?? x))]; });
+const ACT_GROUPS = [
+  ["Raids", ["Crota's End","Deep Stone Crypt","Desert Perpetual","Epic Desert Perpetual","Garden of Salvation","King's Fall","Last Wish","Root of Nightmares","Salvation's Edge","Vault of Glass","Vow of the Disciple"]],
+  ["Dungeons", ["Duality","Ghosts of the Deep","Grasp of Avarice","Pit of Heresy","Prophecy","Shattered Throne","Spire of the Watcher","Sundered Doctrine","Vesper's Host","Warlord's Ruin"]],
+  ["PvP", ["Crucible","Competitive","Trials","Iron Banner"]],
+  ["Playlists & Ops", ["Arena Ops","Fireteam Ops","Solo Ops","Pinnacle Ops","Onslaught","Gambit","Dares"]],
+  ["Vendors", ["Banshee","Xur","Zavala","Shaxx"]],
+  ["Destinations", ["World","EDZ","Cosmodrome","Europa","Moon","Nessus","Neomuna","Throne World","Pale Heart","Dreaming City","Kepler"]]
+];
+const ACT_GROUP_OF = Object.fromEntries(ACT_GROUPS.flatMap(([g, xs]) => xs.map(x => [x, g])));
+const ALL_ACTS = [...new Set(WEAPONS.flatMap(w => w.acts))];
+function groupActs(acts){
+  const out = ACT_GROUPS.map(([g, xs]) => [g, xs.filter(x => acts.includes(x))]);
+  out.push(["Seasonal & other", acts.filter(x => !ACT_GROUP_OF[x]).sort((a,b) => a === "Unknown" ? 1 : b === "Unknown" ? -1 : a.localeCompare(b))]);
+  return out.filter(([, xs]) => xs.length);
+}
+const BYID = Object.fromEntries(WEAPONS.map(w => [w.id, w]));
+const SETS = D.sets;
+const SETBY = Object.fromEntries(SETS.map(s => [s.id, s]));
+const NOTES = D.notes;
+const STUN = D.stun;
+const PIECES = [["head","Head"],["arms","Arms"],["chest","Chest"],["legs","Legs"],["class","Class Item"]];
+const STAT_ICON = JSON.parse(document.getElementById("vault-stat-icons").textContent);
+const BASE_STATS = [["health","Health"],["melee","Melee"],["grenade","Grenade"],["super","Super"],["class","Class"],["weapons","Weapons"]];
+const BASE_NAME = Object.fromEntries(BASE_STATS);
+const PAIRS = {health:["grenade","class"],melee:["health","weapons"],grenade:["super","class"],super:["health","melee"],class:["melee","weapons"],weapons:["grenade","super"]};
+// each row: one primary stat's two pairings (primary / secondary)
+const STATS = BASE_STATS.flatMap(([k,l]) => PAIRS[k].map(t => [k+"-"+t, l+" / "+BASE_NAME[t]]));
+const statPrimary = k => k.split("-")[0];
+const STATNAME = Object.fromEntries(STATS);
+const TIER_ORDER = {S:0,A:1,B:2,C:3,D:4,E:5,F:6};
+const tierVar = t => `var(--t-${String(t).toLowerCase()})`;
+const SORT_FIELDS = [["name","Name"],["element","Energy"],["frame","Frame"],["source","Source"],["stun","Stun"],["p1","Perk 1"],["p2","Perk 2"],["origin","Origin Trait"],["tier","Tier"]];
+const FILTER_FIELDS = [["act","Activity"],["a","Ammo Type"],["element","Energy"],["stun","Stun Type"],["tier","Tier"],["frame","Frame"],["season","Season"]];
+const AMMO_LABEL = Object.fromEntries(AMMO.map(a => [a.key, a.label]));
+const fieldVals = (w, f) => f === "act" ? w.acts : [w[f]];
+const MLABEL = {god:"God Roll",semi:"Semi-God Roll",looking:"Looking for"};
+const ammoNum = w => { const s = w.stats[0]; const n = s ? parseFloat(s[1]) : NaN; return isNaN(n) ? -1 : n; };
+WEAPONS.forEach(w => { w.ammo = ammoNum(w); });
+const SET_TAGS = [...new Set(SETS.flatMap(s => s.bonuses.flatMap(b => b.tags)))].sort();
+
+// decode icons into blob URLs once, on demand
+const iconCache = {};
+function iconURL(kind, id){
+  const key = kind + id;
+  if(iconCache[key]) return iconCache[key];
+  const src = ICON_SRC[kind][id];
+  if(!src) return "";
+  try{
+    const [head, b64] = src.split(",");
+    const mime = head.slice(5, head.indexOf(";"));
+    const bin = atob(b64); const u8 = new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) u8[i] = bin.charCodeAt(i);
+    iconCache[key] = URL.createObjectURL(new Blob([u8], {type:mime}));
+  }catch(e){ iconCache[key] = src; }
+  return iconCache[key];
+}
+
+/* ================= ICONS ================= */
+const I = {
+  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>',
+  god:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5l2.6 6.4 6.9.5-5.3 4.4 1.7 6.7L12 16.8l-5.9 3.7 1.7-6.7-5.3-4.4 6.9-.5z"/></svg>',
+  semi:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor"/></svg>',
+  looking:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m4.5 12.5 5 5 10-11"/></svg>',
+  clear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8"/></svg>',
+  chev:'<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 5 7 7-7 7"/></svg>'
+};
+const PIECE_SVG = {
+  head:'<svg class="glyph" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M7 19c0-7 4-12 9-12s9 5 9 12v5l-4 3h-10l-4-3z"/><path d="M10 17h12l-2 4h-8z" fill="currentColor" fill-opacity=".35"/></svg>',
+  arms:'<svg class="glyph" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M9 27V15l2-6h3v6M14 15V7h3v8M17 15V8h3v8M20 16V10h3v9l-2 8z"/><path d="M9 21h12"/></svg>',
+  chest:'<svg class="glyph" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M11 5l5 3 5-3 6 4-2 7-3-1v12H10V15l-3 1-2-7z"/><path d="M13 15h6M13 20h6"/></svg>',
+  legs:'<svg class="glyph" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M9 5h14l1 8-3 14h-4l-1-11-1 11h-4L8 13z"/><path d="M9 9h14"/></svg>',
+  class:'<svg class="glyph" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M9 5h14v16l-7 6-7-6z"/><path d="M16 10l2.5 4-2.5 4-2.5-4z" fill="currentColor" fill-opacity=".45"/></svg>'
+};
+
+/* ================= STATE + SAVING ================= */
+const LKEY = "vault.v1", LSOUND = "vault.sound.v1";
+const local = {
+  get(k,d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+const cached = local.get(LKEY, {});
+let marks = cached.marks || {};
+let armor = cached.armor || {};
+let armorLook = cached.armorLook || {};
+let soundURL = local.get(LSOUND, null);
+
+const S = {
+  view:"weapons", vaultSub:"weapons",
+  ammo:"all", arch:"all", q:"", sorts:[], filters:{}, fOpen:false,
+  wStat:"all", vStat:"all",
+  aq:"", aStat:"all", aTags:[], aSort:"sheet", vaq:"",
+  open:{}, menuFor:null, edit:null
+};
+
+let docRef = null, soundRef = null, sync = "loading";
+function setSync(s){
+  sync = s;
+  const map = {loading:["Loading","var(--faint)"],saved:["Synced","var(--god)"],saving:["Saving","var(--semi)"],local:["This device only","var(--faint)"],error:["Not saved","var(--t-d)"],signedout:["Not signed in","var(--faint)"],offline:["Offline","var(--t-d)"]};
+  const [l,c] = map[s] || map.local;
+  const el = document.getElementById("sync");
+  el.style.setProperty("--c", c); el.querySelector(".label").textContent = l;
+  el.title = s === "saved" ? "Your progress is saved to your account and follows you to other devices."
+    : s === "local" ? "Account sync isn't available in this view, so progress is saved in this browser only."
+    : s === "signedout" ? "Progress is saved in this browser only. Sign in with Google to save it to your account and use it on any device."
+    : s === "offline" ? "Couldn't reach the sign in service. Progress is saved in this browser for now."
+    : s === "error" ? "The last change didn't save to your account. It's kept in this browser and will retry on your next change." : "";
+}
+let writing = false, writeAgain = false;
+async function persist(){
+  local.set(LKEY, {marks, armor, armorLook});
+  if(!docRef){ return; }
+  if(writing){ writeAgain = true; return; }
+  writing = true; setSync("saving");
+  try{
+    do{
+      writeAgain = false;
+      const body = {v:1, marks, armor, armorLook};
+      try{ await docRef.set(body); }
+      catch(e){
+        if(e && e.code === "unavailable"){ await new Promise(r => setTimeout(r, 600 + Math.random()*600)); await docRef.set(body); }
+        else throw e;
+      }
+    }while(writeAgain);
+    setSync("saved");
+  }catch(e){
+    if(e && (e.code === "invalid_argument" || e.code === "not_granted" || e.code === "revoked")){ docRef = null; setSync("local"); }
+    else setSync("error");
+  }finally{ writing = false; }
+}
+let unsubVault = null;
+function attachStore(ref, sref){
+  soundRef = sref;
+  let first = true;
+  unsubVault = ref.onSnapshot(snap => {
+    if(writing || snap.metadata.hasPendingWrites) return;
+    if(first){
+      first = false; docRef = ref;
+      if(!snap.exists){
+        if(Object.keys(marks).length || Object.keys(armor).length || Object.keys(armorLook).length) persist(); else setSync("saved");
+        return;
+      }
+    }
+    if(!snap.exists) return;
+    const data = snap.data() || {};
+    marks = JSON.parse(JSON.stringify(data.marks || {}));
+    armor = JSON.parse(JSON.stringify(data.armor || {}));
+    armorLook = JSON.parse(JSON.stringify(data.armorLook || {}));
+    local.set(LKEY, {marks, armor, armorLook});
+    setSync("saved");
+    if(overlay.hidden && menu.hidden) render();
+  }, () => { docRef = null; setSync(FB_CONFIG ? "error" : "local"); });
+  sref.get().then(s => { if(s.exists && s.data().url){ soundURL = s.data().url; local.set(LSOUND, soundURL); } }).catch(()=>{});
+}
+async function initSync(){
+  if(FB_CONFIG) return initFirebase(FB_CONFIG);
+  try{
+    if(!window.claude || !window.claude.use){ setSync("local"); return; }
+    const [db, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
+    if(!db || !user){ setSync("local"); return; }
+    const uid = await user.id();
+    if(!uid){ setSync("local"); return; }
+    attachStore(db.doc("data/users/" + uid + "/vault"), db.doc("data/users/" + uid + "/sound"));
+  }catch(e){ setSync("local"); }
+}
+
+/* ---------- website mode: Google sign in + Firestore (Firebase) ---------- */
+const FB_CONFIG = (() => { try{ return JSON.parse(document.getElementById("vault-firebase").textContent); }catch(e){ return null; } })();
+let fbAuth = null, fbUser = null, fbDb = null;
+function loadScript(src){ return new Promise((res, rej) => { const el = document.createElement("script"); el.src = src; el.onload = res; el.onerror = () => rej(new Error(src)); document.head.appendChild(el); }); }
+async function initFirebase(cfg){
+  const base = "https://www.gstatic.com/firebasejs/10.12.2/";
+  try{
+    await loadScript(base + "firebase-app-compat.js");
+    await Promise.all([loadScript(base + "firebase-auth-compat.js"), loadScript(base + "firebase-firestore-compat.js")]);
+  }catch(e){ setSync("offline"); return; }
+  firebase.initializeApp(cfg);
+  fbAuth = firebase.auth(); fbDb = firebase.firestore();
+  document.getElementById("acct").hidden = false;
+  fbAuth.getRedirectResult().catch(()=>{});
+  fbAuth.onAuthStateChanged(user => {
+    if(unsubVault){ unsubVault(); unsubVault = null; }
+    fbUser = user; docRef = null; soundRef = null;
+    paintAcct();
+    if(!user){ setSync("signedout"); return; }
+    setSync("loading");
+    attachStore(fbDb.doc("users/" + user.uid + "/data/vault"), fbDb.doc("users/" + user.uid + "/data/sound"));
+  });
+}
+function paintAcct(){
+  const b = document.getElementById("acct"); if(!b) return;
+  const name = fbUser ? (fbUser.displayName || fbUser.email || "Account") : "";
+  b.classList.toggle("in", !!fbUser);
+  b.querySelector(".acct-av").textContent = fbUser ? name.trim().charAt(0).toUpperCase() : "";
+  b.querySelector(".acct-l").textContent = fbUser ? name.split(" ")[0] : "Sign in";
+  b.setAttribute("aria-label", fbUser ? `Signed in as ${name}. Account options` : "Sign in with Google");
+}
+function signIn(){
+  const prov = new firebase.auth.GoogleAuthProvider();
+  fbAuth.signInWithPopup(prov).catch(e => {
+    const c = e && e.code;
+    if(c === "auth/popup-blocked" || c === "auth/operation-not-supported-in-this-environment" || c === "auth/cancelled-popup-request") fbAuth.signInWithRedirect(prov);
+    else if(c !== "auth/popup-closed-by-user") toast("Sign in didn't finish. Please try again.");
+  });
+}
+function openAcctMenu(btn){
+  S.menuFor = "acct";
+  const name = fbUser.displayName || "", mail = fbUser.email || "";
+  menu.innerHTML = `<div class="mh">${esc(name || mail)}${name && mail ? `<br>${esc(mail)}` : ""}</div>
+    <button type="button" role="menuitem" data-act="export"><span style="color:var(--accent)">${I.check}</span>Export my progress</button>
+    <button type="button" role="menuitem" data-act="import"><span style="color:var(--accent)">${I.plus}</span>Import progress</button>
+    <div class="sep"></div>
+    <button type="button" role="menuitem" data-act="signout"><span style="color:var(--muted)">${I.clear}</span>Sign out</button>`;
+  placeMenu(btn);
+}
+function exportProgress(){
+  const body = JSON.stringify({app:"endgame-api", v:1, exported:new Date().toISOString(), marks, armor, armorLook}, null, 1);
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([body], {type:"application/json"}));
+  a.download = "endgame-api-progress.json"; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  toast("Progress exported");
+}
+let pendingImport = null;
+function importModal(data){
+  pendingImport = data;
+  const nw = Object.keys(data.marks||{}).length, na = Object.values(data.armor||{}).reduce((t,s)=>t+Object.keys(s).length,0), nl = Object.values(data.armorLook||{}).reduce((t,s)=>t+Object.keys(s).length,0);
+  openModal(`<div class="modal-head"><h2>Import progress</h2>${closeX}</div>
+    <div class="modal-body">
+      <p>This file has <b>${nw}</b> marked weapons, <b>${na}</b> armor pieces and <b>${nl}</b> armor pieces on your Looking for list.</p>
+      <p>Importing replaces the progress you have now${fbUser ? " and saves it to your account" : ""}.</p>
+    </div>
+    <div class="modal-foot"><button type="button" class="btn ghost" data-act="modal-close">Cancel</button><button type="button" class="btn primary" data-act="import-go" data-autofocus>Replace with this file</button></div>`);
+}
+
+/* ================= HELPERS ================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const elVar = e => `var(--el-${String(e).toLowerCase()})`;
+const isObtained = m => m === "god" || m === "semi";
+const piecesOf = s => armor[s.id] || {};
+const lookOf = s => armorLook[s.id] || {};
+const lookHave = s => PIECES.filter(([p]) => (lookOf(s)[p]||[]).filter(k => STATNAME[k]).length).length;
+const lookTotal = () => SETS.reduce((a,s) => a + lookHave(s), 0);
+const lookStats = () => SETS.reduce((a,s) => a + PIECES.reduce((b,[p]) => b + (lookOf(s)[p]||[]).filter(k => STATNAME[k]).length, 0), 0);
+const validStats = arr => (arr||[]).filter(k => STATNAME[k]);
+const piecesHave = s => PIECES.filter(([p]) => validStats(piecesOf(s)[p]).length).length;
+const fn = n => n ? `<sup class="fn" title="${esc(NOTES[n] || "")}">[${n}]</sup>` : "";
+function lines(arr){ return `<div class="lines">${arr.map(x => Array.isArray(x) ? `<s title="Struck on the sheet">${esc(x[0])}</s>` : `<span>${esc(x)}</span>`).join("")}</div>`; }
+function thumb(w, big){
+  const m = marks[w.id] || "";
+  return `<div class="thumb ${m} ${big?"big":""}" data-thumb="${w.id}"><img src="${iconURL("w", w.id)}" alt="" decoding="async"></div>`;
+}
+const perkName = x => Array.isArray(x) ? x[0] : x;
+function ico(kind, id, label, cls){
+  const src = id ? iconURL(kind, id) : "";
+  if(!src) return `<span class="ic txt ${cls||""}" tabindex="0" data-tip="${esc(label)}">${esc(label)}</span>`;
+  return `<span class="ic ${cls||""}" tabindex="0" role="img" aria-label="${esc(label)}" data-tip="${esc(label)}"><img src="${src}" alt="" decoding="async"></span>`;
+}
+function elemCell(e){ return ico("e", String(e).toLowerCase(), e); }
+function frameCell(w){ return w.frame ? ico("t", w.fi, w.frame + (w.frameNote ? ` [${w.frameNote}]` : ""), "frame") : '<span class="dim">—</span>'; }
+function originCell(w){
+  if(!w.origin || w.origin === "None") return '<span class="dim">—</span>';
+  return ico("t", w.oi, w.origin + (w.oriX ? " (struck on the sheet)" : ""), w.oriX ? "x" : "");
+}
+function perkNamed(w, arr, rows){
+  const cells = arr.map(x => { const n = perkName(x), struck = Array.isArray(x), id = (w.pi||{})[n];
+    return `<div class="pn ${struck?"x":""}">${id?`<img src="${iconURL("t", id)}" alt="">`:""}<span>${struck?`<s>${esc(n)}</s>`:esc(n)}</span></div>`; });
+  while(cells.length < rows) cells.push('<div class="pn"></div>');
+  return `<div class="pcol">${cells.join("")}</div>`;
+}
+const PHONE = window.matchMedia ? matchMedia("(max-width: 700px)") : {matches:false};
+function perkCol(w, arr, rows){
+  const cells = arr.map(x => { const n = perkName(x), struck = Array.isArray(x);
+    return `<div class="slot">${ico("t", (w.pi||{})[n], n + (struck ? " (struck on the sheet)" : ""), struck ? "x" : "")}</div>`; });
+  while(cells.length < rows) cells.push('<div class="slot"></div>');
+  return `<div class="pk">${cells.join("")}</div>`;
+}
+function stunImg(t, cls){ return STUN[t] ? `<span class="ic" tabindex="0" role="img" aria-label="${t}" data-tip="${t}"><img class="${cls||"stun"}" src="${STUN[t]}" alt=""></span>` : `<span class="dim">—</span>`; }
+function statsCell(w){
+  return `<div class="stats-cell">${w.stats.map(([k,v,c,n]) => `<span class="ammo ${c?"":"plain"}" style="--c:${c||"var(--panel-2)"}" title="${k}">${k!=="Ammo"?`<small>${k}</small>`:""}${esc(v)}${fn(n)}</span>`).join("")}</div>`;
+}
+function tierCell(t, rank){ return `<div class="tier-cell"><span class="tier" style="--c:${tierVar(t)}">${esc(t)}</span>${rank!=null?`<span class="rank">#${rank}</span>`:""}</div>`; }
+
+/* ================= RENDER ================= */
+function render(){
+  document.querySelectorAll(".nav button").forEach(b => b.setAttribute("aria-current", b.dataset.view === S.view ? "page" : "false"));
+  const got = WEAPONS.filter(w => isObtained(marks[w.id])).length;
+  $("#navCount").textContent = got ? got : "";
+  let html = "";
+  if(S.view === "weapons") html = weaponBrowser("all");
+  if(S.view === "armor")   html = armorBlock("all");
+  if(S.view === "vault")   html = vaultView();
+  const strip = document.querySelector(".chips"), keep = strip ? strip.scrollLeft : 0;
+  $("#main").innerHTML = html;
+  const ns = document.querySelector(".chips");
+  if(ns){ ns.scrollLeft = keep; }
+  hideTip();
+}
+
+/* ---------- weapons ---------- */
+function baseWeapons(mode){ return mode === "vault" ? WEAPONS.filter(w => marks[w.id]) : WEAPONS; }
+function scope(mode){ return baseWeapons(mode).filter(w => (S.ammo === "all" || w.a === S.ammo) && (S.arch === "all" || w.arch === S.arch)); }
+function weaponBrowser(mode){
+  const base = baseWeapons(mode);
+  const ammo = AMMO_TABS.find(a => a.key === S.ammo);
+  const inAmmo = S.ammo === "all" ? base : base.filter(w => w.a === S.ammo);
+  const tabs = AMMO_TABS.map(a => `<button type="button" class="ammo-tab" data-act="ammo" data-k="${a.key}" aria-pressed="${a.key===S.ammo}" style="--ammo:var(--ammo-${a.key})"><span class="ammo-swatch"></span>${a.label}<span class="count">${a.key==="all"?base.length:base.filter(w=>w.a===a.key).length}</span></button>`).join("");
+  let chips = "";
+  if(ammo.archs.length > 1){
+    chips = `<button type="button" class="chip" data-act="arch" data-k="all" aria-pressed="${S.arch==="all"}">All <span class="count">${inAmmo.length}</span></button>`;
+    let lastAmmo = null;
+    ammo.archs.forEach(ar => {
+      const n = inAmmo.filter(w=>w.arch===ar).length, am = AMMO_OF_ARCH[ar];
+      if(S.ammo === "all" && am !== lastAmmo){ chips += `<span class="chip-sep" style="--ammo:var(--ammo-${am})" title="${AMMO_LABEL[am]}"></span>`; lastAmmo = am; }
+      chips += `<button type="button" class="chip ${n?"":"empty"}" data-act="arch" data-k="${esc(ar)}" aria-pressed="${S.arch===ar}">${esc(ar)} <span class="count">${n}</span></button>`;
+    });
+  }
+  return `<div class="cat-sentinel"></div><div class="catbar artfill"><div class="ammo-tabs" aria-label="Ammo type">${tabs}</div>
+    <div class="chips" aria-label="Archetype">${chips}</div></div>
+    ${weaponControls(mode)}
+    <div id="list">${weaponList(mode)}</div>`;
+}
+function filterValues(sc, f){
+  let vals = [...new Set(sc.flatMap(w => fieldVals(w, f)).concat(S.filters[f] || []))].filter(v => v !== "");
+  vals.sort((a,b) => f === "tier" ? TIER_ORDER[a]-TIER_ORDER[b] : f === "season" ? (+b)-(+a) : String(a).localeCompare(String(b)));
+  return vals;
+}
+function weaponControls(mode){
+  const st = mode === "vault" ? S.vStat : S.wStat;
+  const opts = [["all","All"],["god","God Roll","var(--god)"],["semi","Semi-God","var(--semi)"],["looking","Looking for","var(--look)"]];
+  if(mode !== "vault") opts.push(["none","Unmarked"]);
+  const seg = opts.map(([k,l,c]) => `<button type="button" data-act="stat" data-mode="${mode}" data-k="${k}" aria-pressed="${st===k}">${c?`<span class="dot" style="--c:${c}"></span>`:""}${l}</button>`).join("");
+  const sorts = SORT_FIELDS.map(([k,l]) => {
+    const i = S.sorts.findIndex(s => s.key === k);
+    if(i < 0) return `<span class="sort-pill"><button type="button" data-act="sort" data-k="${k}">${l}</button></span>`;
+    const s = S.sorts[i];
+    const dir = k === "tier" ? (s.dir > 0 ? "S→F" : "F→S") : (s.dir > 0 ? "A→Z" : "Z→A");
+    return `<span class="sort-pill on"><button type="button" data-act="sort" data-k="${k}" aria-label="${l}, priority ${i+1}, ${dir}. Click to flip"><span class="sort-n">${i+1}</span>${l}<span class="sort-dir">${dir}</span></button><button type="button" class="x" data-act="sort-x" data-k="${k}" aria-label="Remove ${l} sort">×</button></span>`;
+  }).join("");
+  const sc = scope(mode);
+  let nActive = 0;
+  const fv = (f, v, label) => `<button type="button" class="fv" data-act="filt" data-f="${f}" data-v="${esc(v)}" aria-pressed="${(S.filters[f]||[]).includes(v)}">${label}</button>`;
+  const groups = FILTER_FIELDS.map(([f,l]) => {
+    if(f === "a" && S.ammo !== "all") return "";
+    const vals = filterValues(sc, f);
+    if(vals.length < 2 && !(S.filters[f]||[]).length) return "";
+    const sel = S.filters[f] || [];
+    nActive += sel.length;
+    if(f === "act"){
+      return `<div class="fgroup wide"><h3>${l}</h3>${groupActs(vals).map(([g, xs]) => `<div class="sub">${esc(g)}</div><div class="fvals">${xs.map(v => fv(f, v, esc(v))).join("")}</div>`).join("")}</div>`;
+    }
+    const label = v => f === "element" ? `<img src="${iconURL("e", String(v).toLowerCase())}" alt="">${esc(v)}` : f === "stun" ? `<img src="${STUN[v]||""}" alt="">${esc(v)}` : f === "tier" ? `<span class="dot" style="--c:${tierVar(v)};border-radius:2px"></span>${esc(v)}` : f === "season" ? `S${esc(v)}` : f === "a" ? `<span class="dot" style="--c:var(--ammo-${v});border-radius:1px"></span>${esc(AMMO_LABEL[v])}` : esc(v);
+    if(f === "a") vals.sort((x,y) => AMMO.findIndex(a=>a.key===x) - AMMO.findIndex(a=>a.key===y));
+    return `<div class="fgroup ${f==="frame"||f==="season"?"wide":""}"><h3>${l}</h3><div class="fvals">${vals.map(v => fv(f, v, label(v))).join("")}</div></div>`;
+  }).join("");
+  return `<div class="controls first">
+      <label class="search">${I.search}<input id="wq" type="search" placeholder="Search names, perks, origin traits" value="${esc(S.q)}" autocomplete="off" aria-label="Search weapons"></label>
+      <div class="seg" role="group" aria-label="Status">${seg}</div>
+    </div>
+    <div class="controls sort-row"><span class="ctl-label">Sort</span>${sorts}${S.sorts.length?`<button type="button" class="text-btn" data-act="sort-clear">Back to sheet order</button>`:""}</div>
+    <details class="filters" ${S.fOpen?"open":""}><summary>${I.chev}Filters ${nActive?`<span class="badge-n">${nActive}</span><button type="button" class="text-btn clear" data-act="filt-clear">Clear filters</button>`:""}</summary><div class="fgroups">${groups}</div></details>`;
+}
+function matchStatus(w, st){
+  const m = marks[w.id];
+  if(st === "all") return true;
+  if(st === "none") return !m;
+  return m === st;
+}
+const flat = a => a.map(x => Array.isArray(x) ? x[0] : x).join(" ");
+function matchesQuery(w, q){
+  return (w.name + " " + w.var + " " + flat(w.p1) + " " + flat(w.p2) + " " + w.origin + " " + flat(w.barrel) + " " + flat(w.mag)).toLowerCase().includes(q);
+}
+const ARCH_ORDER = Object.fromEntries(AMMO.flatMap(a => a.archs).map((x,i) => [x,i]));
+function sortList(list){
+  return list.slice().sort((a,b) => {
+    for(const s of S.sorts){
+      let c;
+      if(s.key === "tier") c = (TIER_ORDER[a.tier] ?? 9) - (TIER_ORDER[b.tier] ?? 9) || a.rank - b.rank;
+      else if(s.key === "ammo") c = b.ammo - a.ammo;
+      else if(s.key === "season") c = (+b.season) - (+a.season);
+      else if(s.key === "p1" || s.key === "p2") c = flat(a[s.key]).localeCompare(flat(b[s.key]));
+      else c = String(a[s.key]).localeCompare(String(b[s.key]));
+      if(c) return c * s.dir;
+    }
+    return (ARCH_ORDER[a.arch] - ARCH_ORDER[b.arch]) || a.rank - b.rank;
+  });
+}
+function weaponList(mode){
+  if(mode === "vault" && !WEAPONS.some(w => marks[w.id])){
+    return `<div class="empty-state"><strong>Your vault is empty</strong><span>Mark a weapon as Obtained or Looking for and it shows up here.</span><button class="btn" data-act="nav" data-view="weapons">Browse weapons</button></div>`;
+  }
+  let items = scope(mode);
+  const total = items.length;
+  for(const [f, vals] of Object.entries(S.filters)) if(vals.length && (f !== "a" || S.ammo === "all")) items = items.filter(w => fieldVals(w, f).some(v => vals.includes(v)));
+  const st = mode === "vault" ? S.vStat : S.wStat;
+  items = items.filter(w => matchStatus(w, st));
+  const q = S.q.trim().toLowerCase();
+  if(q) items = items.filter(w => matchesQuery(w, q));
+  items = sortList(items);
+  const all = scope("all");
+  const obtained = all.filter(w => isObtained(marks[w.id])).length;
+  const head = `<div class="result"><span>Showing ${items.length} of ${total}</span><span>${obtained} / ${all.length} obtained here</span></div>`;
+  if(!items.length) return head + `<div class="empty-state"><strong>No matches</strong><span>Nothing here fits the current search, status and filters.</span></div>`;
+  const th = (k, l) => {
+    const i = S.sorts.findIndex(s => s.key === k);
+    const arrow = i < 0 ? "" : (S.sorts[i].dir > 0 ? "↓" : "↑") + (S.sorts.length > 1 ? (i+1) : "");
+    return `<th><button type="button" class="hs ${i<0?"":"on"}" data-act="sort" data-k="${k}">${l}${arrow?` <span>${arrow}</span>`:""}</button></th>`;
+  };
+  const showArch = S.arch === "all";
+  const rows = items.map(w => {
+    const m = marks[w.id], open = !!S.open[w.id];
+    const rowsN = Math.max(w.p1.length, w.p2.length, 1);
+    const statusBtn = `<button type="button" class="status-btn ${m?"s-"+m:""}" data-act="status" data-id="${w.id}" aria-haspopup="menu" aria-label="Mark ${esc(w.name)}${m?" (currently "+MLABEL[m]+")":""}">${m ? I[m] : I.plus}</button>`;
+    const nameBlock = `<div class="nm"><div class="nm-txt"><button type="button" class="name-btn" data-act="open" data-id="${w.id}" aria-expanded="${open}"><span class="wname">${esc(w.name)}</span></button>${w.var?`<div class="variant">${esc(w.var)}</div>`:""}<div class="wsub">${showArch?esc(w.arch)+" · ":""}S${esc(w.season)}${m?` · <span class="mtag mt-${m}">${MLABEL[m]}</span>`:""}</div></div><button type="button" class="expand" data-act="open" data-id="${w.id}" aria-label="${open?"Hide":"Show"} details for ${esc(w.name)}">${I.chev}</button></div>`;
+    const notes = open ? [w.frameNote, ...w.stats.map(s => s[3])].filter(Boolean) : [];
+    const detailGrid = open ? `<div class="detail-grid">
+      <div class="dup"><div class="k">Frame</div>${esc(w.frame || "—")}</div>
+      <div class="dup"><div class="k">Perk 1</div>${lines(w.p1)}</div>
+      <div class="dup"><div class="k">Perk 2</div>${lines(w.p2)}</div>
+      <div><div class="k">Origin Trait</div>${w.oriX?`<s>${esc(w.origin)}</s>`:esc(w.origin)}</div>
+      <div><div class="k">Barrel</div>${lines(w.barrel)}</div>
+      <div><div class="k">Mag</div>${lines(w.mag)}</div>
+      <div><div class="k">Masterwork</div>${esc(w.mw)}</div>
+      <div><div class="k">${S.arch==="Swords"?"Charge / Impact":"Ammo"}</div>${statsCell(w)}</div>
+      <div><div class="k">Season</div>${esc(w.season)}</div>
+      <div><div class="k">Upgrade <span style="font-family:var(--font-body);font-size:13px;letter-spacing:0">⬆</span></div>${esc(w.up)}</div>
+      <div class="notes"><div class="k">Notes</div>${esc(w.notes) || '<span class="dim">No notes</span>'}${notes.map(n => `<div class="foot">[${n}] ${esc(NOTES[n]||"")}</div>`).join("")}</div>
+    </div>` : "";
+    if(PHONE.matches){
+      return `<article class="wcard ${open?"open":""}">
+        <div class="wc-top">${statusBtn}${thumb(w)}<div class="wc-name">${nameBlock}</div>${tierCell(w.tier, w.rank)}</div>
+        <div class="wc-info">${elemCell(w.element)}${frameCell(w)}${stunImg(w.stun)}${originCell(w)}<span class="wc-src">${w.srcX?`<s>${esc(w.source)}</s>`:esc(w.source)}</span></div>
+        <div class="wc-perks"><div class="wc-h">Perk 1</div><div class="wc-h">Perk 2</div>${perkNamed(w, w.p1, rowsN)}${perkNamed(w, w.p2, rowsN)}</div>
+        ${detailGrid}</article>`;
+    }
+    const row = `<tr class="row ${open?"open":""}">
+      <td class="c-status">${statusBtn}</td>
+      <td class="c-thumb">${thumb(w)}</td>
+      <td class="c-name">${nameBlock}</td>
+      <td class="c-ico">${elemCell(w.element)}</td>
+      <td class="c-ico">${frameCell(w)}</td>
+      <td class="c-src">${w.srcX?`<s title="Struck on the sheet">${esc(w.source)}</s>`:esc(w.source)}</td>
+      <td class="c-ico">${stunImg(w.stun)}</td>
+      <td class="c-perk">${perkCol(w, w.p1, rowsN)}</td>
+      <td class="c-perk">${perkCol(w, w.p2, rowsN)}</td>
+      <td class="c-ico">${originCell(w)}</td>
+      <td class="c-tier">${tierCell(w.tier, w.rank)}</td>
+    </tr>`;
+    if(!open) return row;
+    return row + `<tr class="detail"><td colspan="11">${detailGrid}</td></tr>`;
+  }).join("");
+  if(PHONE.matches) return head + `<div class="cards">${rows}</div>`;
+  const cols = [4,5.5,18.5,7.5,7.5,15,8,7.5,7.5,10,9].map(w => `<col style="width:${w}%">`).join("");
+  return head + `<div class="table-wrap"><table class="wtable"><colgroup>${cols}</colgroup><thead>
+    <tr class="bands"><th colspan="3" class="b-weapon">WEAPON</th><th colspan="4" class="b-info">INFO</th><th colspan="3" class="b-perks">PERKS</th><th class="b-analysis">GRADE</th></tr>
+    <tr><th><span class="sr">Status</span></th><th><span class="sr">Icon</span></th>${th("name","Name")}${th("element","Energy")}${th("frame","Frame")}${th("source","Source")}${th("stun","Stun")}${th("p1","Perk 1")}${th("p2","Perk 2")}${th("origin","Origin Trait")}${th("tier","Tier")}</tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+/* ---------- armor ---------- */
+function armorBlock(mode){
+  const q = mode === "vault" ? S.vaq : S.aq;
+  const opts = mode === "vault"
+    ? [["all","All"],["progress","In progress"],["complete","Complete"],["looking","Looking for"]]
+    : [["all","All sets"],["none","Not started"],["progress","In progress"],["complete","Complete"],["looking","Looking for"]];
+  const seg = opts.map(([k,l]) => `<button type="button" data-act="astat" data-k="${k}" aria-pressed="${S.aStat===k}">${k==="looking"?`<span class="dot" style="--c:var(--look)"></span>`:""}${l}</button>`).join("");
+  const sortSeg = [["sheet","Best bonus"],["tier4","Best 4 piece"],["tier2","Best 2 piece"],["name","Name"],["pieces","Pieces logged"]]
+    .map(([k,l]) => `<button type="button" data-act="asort" data-k="${k}" aria-pressed="${S.aSort===k}">${l}</button>`).join("");
+  const tags = SET_TAGS.map(t => `<button type="button" class="fv" data-act="atag" data-k="${esc(t)}" aria-pressed="${S.aTags.includes(t)}">${esc(t)}</button>`).join("");
+  return `<div class="controls first">
+      <label class="search">${I.search}<input id="${mode==="vault"?"vaq":"aq"}" type="search" placeholder="Search sets, bonuses, sources" value="${esc(q)}" autocomplete="off" aria-label="Search armor sets"></label>
+      <div class="seg" role="group" aria-label="Set progress">${seg}</div>
+    </div>
+    <div class="controls"><span class="ctl-label">Sort</span><div class="seg" role="group" aria-label="Sort sets">${sortSeg}</div></div>
+    <div class="controls legend"><span><i class="h"></i>Obtained (badges bottom right)</span><span><i class="w"></i>Looking for (badges bottom left)</span><span>Tap a piece to choose</span></div>
+    <div class="controls"><span class="ctl-label">Tags</span><div class="fvals">${tags}</div>${S.aTags.length?`<button type="button" class="text-btn" data-act="atag-clear">Clear tags</button>`:""}</div>
+    <div id="alist" data-mode="${mode}">${armorList(mode)}</div>`;
+}
+const bestTier = (s, pcs) => Math.min(...s.bonuses.filter(b => !pcs || b.pcs === pcs).map(b => TIER_ORDER[b.tier] * 1000 + b.rank));
+function armorList(mode){
+  let sets = mode === "vault" ? SETS.filter(s => piecesHave(s) > 0 || lookHave(s) > 0) : SETS.slice();
+  if(mode === "vault" && !sets.length){
+    return `<div class="empty-state"><strong>No armor logged yet</strong><span>Open Armor and tap a piece to log what you have or what you're looking for.</span><button class="btn" data-act="nav" data-view="armor">Browse armor</button></div>`;
+  }
+  const total = sets.length, st = S.aStat;
+  sets = sets.filter(s => { const n = piecesHave(s);
+    return st === "all" || (st === "none" && n === 0) || (st === "progress" && n > 0 && n < 5) || (st === "complete" && n === 5) || (st === "looking" && lookHave(s) > 0); });
+  if(S.aTags.length) sets = sets.filter(s => S.aTags.every(t => s.bonuses.some(b => b.tags.includes(t))));
+  const q = (mode === "vault" ? S.vaq : S.aq).trim().toLowerCase();
+  if(q) sets = sets.filter(s => (s.name + " " + s.source + " " + s.bonuses.map(b => b.name + " " + b.effect + " " + b.trigger).join(" ")).toLowerCase().includes(q));
+  const sorters = {sheet:(a,b)=>bestTier(a)-bestTier(b), tier4:(a,b)=>bestTier(a,4)-bestTier(b,4), tier2:(a,b)=>bestTier(a,2)-bestTier(b,2), name:(a,b)=>a.name.localeCompare(b.name), pieces:(a,b)=>piecesHave(b)-piecesHave(a)||bestTier(a)-bestTier(b)};
+  sets.sort(sorters[S.aSort] || sorters.sheet);
+  const logged = SETS.reduce((a,s)=>a+piecesHave(s),0);
+  const lt = lookTotal();
+  const head = `<div class="result"><span>Showing ${sets.length} of ${total} sets</span><span>${logged} / ${SETS.length*5} pieces logged${lt?` · ${lt} looking for`:""}</span></div>`;
+  if(!sets.length) return head + `<div class="empty-state"><strong>No matches</strong><span>No sets fit the current search, status and tag filters.</span></div>`;
+  const rows = sets.map(s => {
+    const n = piecesHave(s), ps = piecesOf(s), open = !!S.open["set:"+s.id];
+    const ls = lookOf(s);
+    const badgeRow = (arr, cls) => { const shown = arr.slice(0,2), extra = arr.length - shown.length;
+      return `<span class="badges ${cls}">${shown.map(k=>`<span class="sbadge ${cls}" style="--sc:var(--st-${statPrimary(k)})" title="${cls==="want"?"Looking for ":""}${STATNAME[k]}"><img src="${STAT_ICON[k]}" alt=""></span>`).join("")}${extra>0?`<span class="sbadge more">+${extra}</span>`:""}</span>`; };
+    const btns = PIECES.map(([p,l]) => {
+      const sel = validStats(ps[p]), want = validStats(ls[p]);
+      const label = `${l} for ${esc(s.name)}` + (sel.length ? `, obtained: ${sel.map(k=>STATNAME[k]).join(", ")}` : ", not collected") + (want.length ? `, looking for: ${want.map(k=>STATNAME[k]).join(", ")}` : "");
+      return `<button type="button" class="piece ${sel.length?"has":""} ${want.length?"want":""}" data-act="piece" data-set="${s.id}" data-piece="${p}" aria-haspopup="menu" aria-label="${label}">${PIECE_SVG[p]}${want.length&&sel.length?`<span class="want-flag" title="Also looking for more">${I.looking}</span>`:""}${want.length?badgeRow(want,"want"):""}${sel.length?badgeRow(sel,""):""}</button>`;
+    });
+    const cells = btns.map(b => `<td class="c-piece">${b}</td>`).join("");
+    const bonuses = s.bonuses.map(b => `<div class="bonus"><span class="pcs">${b.pcs}pc</span><span class="tier sm" style="--c:${tierVar(b.tier)}">${b.tier}</span><span>${esc(b.name)}</span></div>`).join("");
+    const setCell = `<div class="set"><div class="set-icon"><img src="${iconURL("s", s.id)}" alt="" decoding="async"></div><div class="set-txt"><div class="nm"><button type="button" class="name-btn" data-act="open" data-id="set:${s.id}" aria-expanded="${open}"><span class="set-name wname">${esc(s.name)}</span></button><button type="button" class="expand" data-act="open" data-id="set:${s.id}" aria-label="${open?"Hide":"Show"} bonus details for ${esc(s.name)}">${I.chev}</button></div><div class="set-meta"><span>${esc(s.source)}</span><span class="mini-bar"><i style="width:${n*20}%"></i></span><span class="count">${n}/5</span></div></div></div>`;
+    const detail = open ? `<div class="bonus-cards">${s.bonuses.map(b => `<div class="bcard">
+      <div class="bcard-head"><span class="pcs">${b.pcs} piece</span><strong>${esc(b.name)}</strong>${tierCell(b.tier, b.rank)}${b.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</div>
+      <dl><dt>Trigger</dt><dd>${esc(b.trigger)}</dd><dt>Effect</dt><dd>${esc(b.effect)}</dd><dt>Analysis</dt><dd>${esc(b.desc)}</dd></dl></div>`).join("")}</div>` : "";
+    if(PHONE.matches){
+      return `<article class="acard ${open?"open":""}">${setCell}<div class="bonuses">${bonuses}</div>
+        <div class="ac-pieces">${btns.map((b,i) => `<div class="ac-piece">${b}<span>${PIECES[i][0]==="class"?"Class":PIECES[i][1]}</span></div>`).join("")}</div>${detail}</article>`;
+    }
+    const row = `<tr class="row ${open?"open":""}"><td>${setCell}</td>
+      <td><div class="bonuses">${bonuses}</div></td>${cells}</tr>`;
+    if(!open) return row;
+    return row + `<tr class="detail adetail"><td colspan="7">${detail}</td></tr>`;
+  }).join("");
+  if(PHONE.matches) return head + `<div class="cards">${rows}</div>`;
+  const acols = [24,26,10,10,10,10,10].map(w => `<col style="width:${w}%">`).join("");
+  return head + `<div class="table-wrap"><table class="atable"><colgroup>${acols}</colgroup><thead>
+    <tr class="bands"><th class="b-weapon">SET</th><th class="b-bonus">BONUSES</th><th colspan="5" class="b-pieces">PIECES</th></tr>
+    <tr><th>Set</th><th>Bonuses</th>${PIECES.map(([,l])=>`<th>${l}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+/* ---------- vault ---------- */
+function vaultView(){
+  const total = WEAPONS.length;
+  const god = WEAPONS.filter(w=>marks[w.id]==="god").length;
+  const semi = WEAPONS.filter(w=>marks[w.id]==="semi").length;
+  const look = WEAPONS.filter(w=>marks[w.id]==="looking").length;
+  const pieces = SETS.reduce((a,s)=>a+piecesHave(s),0), piecesTotal = SETS.length*5;
+  const full = SETS.filter(s=>piecesHave(s)===5).length;
+  const pct = (a,b) => b ? Math.round(a/b*100) : 0;
+  const summary = `<div class="summary">
+    <div class="stat"><span class="k">Weapons obtained</span><span class="v">${god+semi}<small> / ${total}</small></span><span class="bar"><i style="width:${pct(god+semi,total)}%"></i></span></div>
+    <div class="stat"><span class="k">God rolls</span><span class="v" style="color:var(--god)">${god}</span></div>
+    <div class="stat"><span class="k">Semi-god rolls</span><span class="v" style="color:var(--semi)">${semi}</span></div>
+    <div class="stat"><span class="k">Weapons looking for</span><span class="v" style="color:var(--look)">${look}</span></div>
+    <div class="stat"><span class="k">Armor pieces</span><span class="v">${pieces}<small> / ${piecesTotal}</small></span><span class="bar"><i style="width:${pct(pieces,piecesTotal)}%"></i></span></div>
+    <div class="stat"><span class="k">Full sets</span><span class="v">${full}<small> / ${SETS.length}</small></span></div>
+    <div class="stat"><span class="k">Armor looking for</span><span class="v" style="color:var(--look)">${lookTotal()}<small> pieces</small></span></div>
+  </div>`;
+  const byAmmo = `<div class="ammo-progress">${AMMO.map(a => { const ws = WEAPONS.filter(w => w.a === a.key); const g = ws.filter(w => isObtained(marks[w.id])).length;
+    return `<div class="ap" style="--ammo:var(--ammo-${a.key})"><div class="ap-top"><span>${a.label}</span><span class="count">${g} / ${ws.length}</span></div><span class="bar"><i style="width:${pct(g,ws.length)}%"></i></span></div>`; }).join("")}</div>`;
+  const sub = `<div class="subtabs" role="group" aria-label="Vault section">
+    <button type="button" class="subtab" data-act="vsub" data-k="weapons" aria-pressed="${S.vaultSub==="weapons"}">Weapons</button>
+    <button type="button" class="subtab" data-act="vsub" data-k="armor" aria-pressed="${S.vaultSub==="armor"}">Armor Sets</button></div>`;
+  return `<div style="height:18px"></div>` + summary + byAmmo + sub +
+    (S.vaultSub === "weapons" ? weaponBrowser("vault") : armorBlock("vault"));
+}
+
+/* ================= MENU ================= */
+const menu = $("#menu");
+function openMenu(btn, id){
+  const w = BYID[id], m = marks[id];
+  S.menuFor = id;
+  menu.innerHTML = `<div class="mh">${esc(w.name)}</div>
+    <button type="button" role="menuitem" data-act="m-obtained" data-id="${id}"><span style="color:var(--god)">${I.god}</span>Obtained</button>
+    <button type="button" role="menuitem" data-act="m-looking" data-id="${id}"><span style="color:var(--look)">${I.looking}</span>Looking for</button>
+    ${m?`<div class="sep"></div><button type="button" role="menuitem" data-act="m-clear" data-id="${id}"><span style="color:var(--muted)">${I.clear}</span>Clear mark</button>`:""}`;
+  menu.hidden = false;
+  const r = btn.getBoundingClientRect(), mw = menu.offsetWidth, mh = menu.offsetHeight;
+  let left = r.right + 8, top = r.top - 4;
+  if(left + mw > innerWidth - 8){ left = Math.max(8, Math.min(r.left, innerWidth - mw - 8)); top = r.bottom + 6; }
+  if(top + mh > innerHeight - 8) top = Math.max(8, r.top - mh - 6);
+  menu.style.left = left + "px"; menu.style.top = top + "px";
+  menu.querySelector("button").focus();
+}
+function openArmorMenu(btn, setId, piece){
+  const s = SETBY[setId], label = PIECES.find(p => p[0] === piece)[1];
+  const have = validStats(piecesOf(s)[piece]), want = validStats(lookOf(s)[piece]);
+  S.menuFor = "set:" + setId + ":" + piece;
+  const n = a => a.length ? ` <span class="count">${a.length}</span>` : "";
+  menu.innerHTML = `<div class="mh">${esc(s.name)} · ${label}</div>
+    <button type="button" role="menuitem" data-act="am-have" data-set="${setId}" data-piece="${piece}"><span style="color:var(--god)">${I.check}</span>Obtained${n(have)}</button>
+    <button type="button" role="menuitem" data-act="am-want" data-set="${setId}" data-piece="${piece}"><span style="color:var(--look)">${I.looking}</span>Looking for${n(want)}</button>
+    ${have.length||want.length?`<div class="sep"></div><button type="button" role="menuitem" data-act="am-clear" data-set="${setId}" data-piece="${piece}"><span style="color:var(--muted)">${I.clear}</span>Clear piece</button>`:""}`;
+  placeMenu(btn);
+}
+function placeMenu(btn){
+  menu.hidden = false;
+  const r = btn.getBoundingClientRect(), mw = menu.offsetWidth, mh = menu.offsetHeight;
+  let left = r.right + 8, top = r.top - 4;
+  if(left + mw > innerWidth - 8){ left = Math.max(8, Math.min(r.left, innerWidth - mw - 8)); top = r.bottom + 6; }
+  if(top + mh > innerHeight - 8) top = Math.max(8, r.top - mh - 6);
+  menu.style.left = left + "px"; menu.style.top = top + "px";
+  menu.querySelector("button").focus();
+}
+function closeMenuSafe(){ closeMenu(); }
+function closeMenu(){ if(!menu.hidden){ menu.hidden = true; S.menuFor = null; } }
+
+/* ================= MODALS ================= */
+const overlay = $("#overlay");
+let lastFocus = null;
+function openModal(html){
+  if(overlay.hidden) lastFocus = document.activeElement;
+  overlay.innerHTML = `<div class="modal" role="dialog" aria-modal="true" data-act="noop">${html}</div>`;
+  overlay.hidden = false;
+  const f = overlay.querySelector("[data-autofocus]") || overlay.querySelector("button");
+  if(f) f.focus();
+}
+function closeModal(){
+  overlay.hidden = true; overlay.innerHTML = ""; S.edit = null;
+  if(lastFocus && document.contains(lastFocus)) lastFocus.focus();
+}
+const closeX = `<button type="button" class="close" data-act="modal-close" aria-label="Close">${I.clear}</button>`;
+
+function weaponModal(id){
+  const w = BYID[id], m = marks[id];
+  openModal(`<div class="modal-head"><h2>Obtained</h2>${closeX}</div>
+    <div class="modal-body">
+      <div class="wm-hero">${thumb(w,true)}<div><div class="wname">${esc(w.name)}</div>${w.var?`<div class="variant">${esc(w.var)}</div>`:""}<div class="wsub">${esc(w.arch)} · ${esc(w.element)} · Tier ${esc(w.tier)}</div></div></div>
+      <div class="target"><div><div class="k">Perk 1</div>${lines(w.p1)}</div><div><div class="k">Perk 2</div>${lines(w.p2)}</div></div>
+      <p>How did the roll come out?</p>
+      <div class="rolls">
+        <button type="button" class="roll god" data-act="roll" data-k="god" data-id="${id}" aria-pressed="${m==="god"}" data-autofocus><span class="rt">God Roll</span><span class="rd">Every perk you were chasing.</span></button>
+        <button type="button" class="roll semi" data-act="roll" data-k="semi" data-id="${id}" aria-pressed="${m==="semi"}"><span class="rt">Semi-God Roll</span><span class="rd">Close, with a perk or two off.</span></button>
+      </div>
+    </div>
+    <div class="modal-foot"><button type="button" class="btn ghost" data-act="modal-close">Cancel</button></div>`);
+}
+function armorModal(setId, piece, mode){
+  const s = SETBY[setId], want = mode === "want";
+  const cur = validStats((want ? lookOf(s) : piecesOf(s))[piece]);
+  S.edit = {setId, piece, mode, sel:new Set(cur), had:cur.length>0};
+  const label = PIECES.find(p => p[0] === piece)[1];
+  const toggles = STATS.map(([k,l]) => `<button type="button" class="stat-t" style="--sc:var(--st-${statPrimary(k)})" data-act="stat-t" data-k="${k}" aria-pressed="${cur.includes(k)}"><span class="ico"><img src="${STAT_ICON[k]}" alt=""></span>${esc(l)}<span class="tick">${I.check}</span></button>`).join("");
+  openModal(`<div class="modal-head"><h2>${label}<span class="mode ${want?"want":"have"}">${want?"Looking for":"Obtained"}</span></h2>${closeX}</div>
+    <div class="modal-body">
+      <div class="piece-hero"><div class="set-icon"><img src="${iconURL("s", s.id)}" alt=""></div><div><div class="set-name">${esc(s.name)}</div><div class="set-meta">${esc(s.source)} · ${label}</div></div></div>
+      <p>${want ? `Pick the stat types you want on a ${label.toLowerCase()} piece from this set. When you later log one as obtained, it comes off this list.` : `Pick every stat type you have on a ${label.toLowerCase()} piece from this set. Choose more than one if you own several.`} Each row shares a primary stat.</p>
+      <div class="stats" role="group" aria-label="Stat types">${toggles}</div>
+    </div>
+    <div class="modal-foot">
+      ${S.edit.had?`<button type="button" class="btn ghost spacer" data-act="armor-clear">${want?"Stop looking":"Remove piece"}</button>`:`<span class="spacer"></span>`}
+      <button type="button" class="btn ghost" data-act="modal-close">Cancel</button>
+      <button type="button" class="btn primary" data-act="armor-save" ${want?'style="background:var(--look);border-color:var(--look);color:var(--ink)"':""}>Save</button>
+    </div>`);
+}
+function infoModal(){
+  openModal(`<div class="modal-head"><h2>Credits</h2>${closeX}</div>
+    <div class="modal-body">
+      <p>Every weapon, armor set and rating in Endgame API comes from:</p>
+      <div class="credit">
+        <div class="sheet">Destiny 2: Endgame Analysis</div>
+        <div class="by">by <b>TheAegisRelic</b></div>
+        <ul>
+          <li>Weapon tiers, rankings and god roll perks</li>
+          <li>Analysis notes for every weapon</li>
+          <li>Armor set bonuses and their ratings</li>
+          <li>The frame, perk and origin trait icons</li>
+        </ul>
+      </div>
+      <p>Endgame API checks his sheet every week, so the tiers and rolls here always follow his latest analysis. All credit for that work goes to him.</p>
+      <div class="maker">Endgame API made by <b>SteelToe</b></div>
+      <p class="fine">Fan made and not affiliated with Bungie. Destiny 2 and its icons and artwork belong to Bungie.</p>
+    </div>
+    <div class="modal-foot">
+      <a class="btn" href="https://docs.google.com/spreadsheets/d/1JM-0SlxVDAi-C6rGVlLxa-J1WGewEeL8Qvq4htWZHhY/edit" target="_blank" rel="noopener">Open his spreadsheet <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></a>
+      <button type="button" class="btn primary" data-act="modal-close" data-autofocus>Done</button>
+    </div>`);
+}
+function soundModal(msg){
+  openModal(`<div class="modal-head"><h2>God Roll Sound</h2>${closeX}</div>
+    <div class="modal-body">
+      <p>Choose the clip that plays with the confetti when you log a God Roll. MP3, WAV or OGG all work. Keep it short so it can sync to your other devices.</p>
+      <div class="file-row"><input id="soundFile" type="file" accept="audio/*" aria-label="Choose a sound file"></div>
+      <div class="sound-state">${msg || (soundURL ? "Using your custom sound." : "Using the built-in chime.")}</div>
+    </div>
+    <div class="modal-foot">
+      ${soundURL?`<button type="button" class="btn ghost spacer" data-act="sound-reset">Use built-in chime</button>`:`<span class="spacer"></span>`}
+      <button type="button" class="btn" data-act="sound-test">Play</button>
+      <button type="button" class="btn primary" data-act="modal-close">Done</button>
+    </div>`);
+}
+
+/* ================= FX ================= */
+let actx = null;
+function chime(){
+  try{
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const t = actx.currentTime;
+    [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f,i) => {
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = "triangle"; o.frequency.value = f;
+      const s = t + i*0.075;
+      g.gain.setValueAtTime(0.0001, s); g.gain.exponentialRampToValueAtTime(0.16, s+0.015); g.gain.exponentialRampToValueAtTime(0.0001, s+0.7);
+      o.connect(g).connect(actx.destination); o.start(s); o.stop(s+0.75);
+    });
+  }catch(e){}
+}
+function playGodSound(){
+  if(soundURL){ try{ const a = new Audio(soundURL); a.volume = 0.9; a.play().catch(chime); return; }catch(e){} }
+  chime();
+}
+const cv = $("#confetti"); let parts = [], raf = 0;
+const reduceMotion = () => window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+function burst(x, y, n, angle, spread, speed){
+  const cols = ["#3fdc86","#a8f5c8","#f3c64a","#ffffff","#9cc6e4","#2bb86c"];
+  for(let i=0;i<n;i++){
+    const a = angle + (Math.random()-.5)*spread, sp = speed*(0.55+Math.random()*0.7);
+    parts.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,w:5+Math.random()*6,h:3+Math.random()*5,r:Math.random()*6,vr:(Math.random()-.5)*0.35,c:cols[i%cols.length],t:0,ttl:110+Math.random()*70});
+  }
+  if(!raf){ cv.hidden = false; raf = requestAnimationFrame(tick); }
+}
+function tick(){
+  const dpr = window.devicePixelRatio || 1, W = innerWidth, H = innerHeight;
+  if(cv.width !== Math.round(W*dpr) || cv.height !== Math.round(H*dpr)){ cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr); }
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,H);
+  parts = parts.filter(p => p.t < p.ttl && p.y < H + 30);
+  for(const p of parts){
+    p.t++; p.vx *= 0.986; p.vy = p.vy*0.986 + 0.28; p.x += p.vx; p.y += p.vy; p.r += p.vr;
+    const flip = Math.abs(Math.cos(p.r*1.7));
+    ctx.globalAlpha = Math.max(0, 1 - p.t/p.ttl);
+    ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.r);
+    ctx.fillStyle = p.c; ctx.fillRect(-p.w/2, -p.h*flip/2, p.w, p.h*flip + 0.6);
+    ctx.restore();
+  }
+  if(parts.length){ raf = requestAnimationFrame(tick); } else { raf = 0; ctx.clearRect(0,0,W,H); cv.hidden = true; }
+}
+function celebrate(id){
+  playGodSound();
+  const el = document.querySelector(`[data-thumb="${id}"]`);
+  if(el){ el.classList.remove("pop"); void el.offsetWidth; el.classList.add("pop"); }
+  if(reduceMotion()) return;
+  let x = innerWidth/2, y = innerHeight/2;
+  if(el){ const r = el.getBoundingClientRect(); if(r.bottom > 0 && r.top < innerHeight){ x = r.left + r.width/2; y = r.top + r.height/2; } }
+  burst(x, y, 90, -Math.PI/2, Math.PI*1.3, 13);
+  burst(0, innerHeight, 70, -Math.PI/3, 0.6, 22);
+  burst(innerWidth, innerHeight, 70, -Math.PI*2/3, 0.6, 22);
+}
+let toastT = 0;
+function toast(msg){
+  const t = $("#toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2200);
+}
+
+/* ================= EVENTS ================= */
+function refreshList(){
+  if(document.getElementById("list")) document.getElementById("list").innerHTML = weaponList(S.view === "vault" ? "vault" : "all");
+  if(document.getElementById("alist")) document.getElementById("alist").innerHTML = armorList(S.view === "vault" ? "vault" : "all");
+}
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-act]");
+  if(!t || !t.closest("#menu")){ if(!(t && (t.dataset.act === "status" || t.dataset.act === "piece" || t.dataset.act === "acct"))) closeMenu(); }
+  if(!t) return;
+  const a = t.dataset.act, k = t.dataset.k, id = t.dataset.id;
+  switch(a){
+    case "noop": return;
+    case "overlay": case "modal-close": closeModal(); return;
+    case "nav": S.view = t.dataset.view; S.aStat = "all"; if(location.hash !== "#"+S.view) location.hash = S.view; render(); scrollTo({top:0}); return;
+    case "ammo": { const st = stuck(); S.ammo = k; S.arch = "all"; render(); const c = document.querySelector(".chips"); if(c) c.scrollLeft = 0; if(st) toCatbar(); return; }
+    case "arch": { const st = stuck(); S.arch = k; render(); if(st) toCatbar(); return; }
+    case "sort": {
+      const i = S.sorts.findIndex(s => s.key === k);
+      if(i < 0) S.sorts.push({key:k, dir:1}); else S.sorts[i].dir *= -1;
+      render(); return; }
+    case "sort-x": S.sorts = S.sorts.filter(s => s.key !== k); render(); return;
+    case "sort-clear": S.sorts = []; render(); return;
+    case "filt": {
+      const f = t.dataset.f, v = t.dataset.v, cur = S.filters[f] || [];
+      S.filters[f] = cur.includes(v) ? cur.filter(x => x !== v) : cur.concat(v);
+      render(); return; }
+    case "filt-clear": e.preventDefault(); S.filters = {}; render(); return;
+    case "stat": if(t.dataset.mode === "vault") S.vStat = k; else S.wStat = k; render(); return;
+    case "astat": S.aStat = k; render(); return;
+    case "asort": S.aSort = k; render(); return;
+    case "atag": S.aTags = S.aTags.includes(k) ? S.aTags.filter(x => x !== k) : S.aTags.concat(k); render(); return;
+    case "atag-clear": S.aTags = []; render(); return;
+    case "vsub": S.vaultSub = k; S.aStat = "all"; render(); return;
+    case "open": S.open[id] = !S.open[id]; refreshList(); return;
+    case "status":
+      if(S.menuFor === id && !menu.hidden){ closeMenu(); return; }
+      openMenu(t, id); return;
+    case "m-obtained": closeMenu(); weaponModal(id); return;
+    case "m-looking": closeMenu(); marks[id] = "looking"; persist(); render(); toast(`${BYID[id].name} added to Looking for`); return;
+    case "m-clear": closeMenu(); delete marks[id]; persist(); render(); toast(`Cleared ${BYID[id].name}`); return;
+    case "roll":
+      marks[id] = k; persist(); closeModal(); render();
+      if(k === "god"){ requestAnimationFrame(() => celebrate(id)); toast(`${BYID[id].name} logged as a God Roll`); }
+      else { requestAnimationFrame(() => { const el = document.querySelector(`[data-thumb="${id}"]`); if(el) el.classList.add("pop"); }); toast(`${BYID[id].name} logged as a Semi-God Roll`); }
+      return;
+    case "piece": {
+      const key = "set:" + t.dataset.set + ":" + t.dataset.piece;
+      if(S.menuFor === key && !menu.hidden){ closeMenu(); return; }
+      openArmorMenu(t, t.dataset.set, t.dataset.piece); return; }
+    case "am-have": closeMenu(); armorModal(t.dataset.set, t.dataset.piece, "have"); return;
+    case "am-want": closeMenu(); armorModal(t.dataset.set, t.dataset.piece, "want"); return;
+    case "am-clear": {
+      closeMenu(); const sid = t.dataset.set, pc = t.dataset.piece;
+      for(const store of [armor, armorLook]){ if(store[sid]){ delete store[sid][pc]; if(!Object.keys(store[sid]).length) delete store[sid]; } }
+      persist(); render(); toast(`Cleared ${SETBY[sid].name} ${PIECES.find(p=>p[0]===pc)[1].toLowerCase()}`); return; }
+    case "stat-t": { const sel = S.edit.sel; sel.has(k) ? sel.delete(k) : sel.add(k); t.setAttribute("aria-pressed", sel.has(k)); return; }
+    case "armor-save": {
+      const {setId, piece, sel, mode} = S.edit;
+      const ordered = STATS.map(s => s[0]).filter(x => sel.has(x));
+      const store = mode === "want" ? armorLook : armor;
+      store[setId] = store[setId] || {};
+      if(ordered.length) store[setId][piece] = ordered; else delete store[setId][piece];
+      if(!Object.keys(store[setId]).length) delete store[setId];
+      let found = 0;
+      if(mode !== "want" && armorLook[setId] && armorLook[setId][piece]){
+        const before = armorLook[setId][piece];
+        const left = before.filter(k => !sel.has(k)); found = before.length - left.length;
+        if(left.length) armorLook[setId][piece] = left; else delete armorLook[setId][piece];
+        if(!Object.keys(armorLook[setId]).length) delete armorLook[setId];
+      }
+      persist(); closeModal(); render();
+      if(found) toast(`Found ${found === 1 ? "a stat type" : found + " stat types"} you were looking for. Removed from Looking for.`);
+      return; }
+    case "armor-clear": {
+      const {setId, piece, mode} = S.edit;
+      const store = mode === "want" ? armorLook : armor;
+      if(store[setId]){ delete store[setId][piece]; if(!Object.keys(store[setId]).length) delete store[setId]; }
+      persist(); closeModal(); render(); return; }
+    case "sound": soundModal(); return;
+    case "acct":
+      if(!fbAuth) return;
+      if(!fbUser){ signIn(); return; }
+      if(S.menuFor === "acct" && !menu.hidden){ closeMenu(); return; }
+      openAcctMenu(t); return;
+    case "signout":
+      closeMenu(); marks = {}; armor = {}; armorLook = {}; local.del(LKEY); render();
+      fbAuth.signOut(); toast("Signed out"); return;
+    case "export": closeMenu(); exportProgress(); return;
+    case "import": closeMenu(); document.getElementById("importFile").click(); return;
+    case "import-go": {
+      const d = pendingImport; pendingImport = null; if(!d) return;
+      marks = d.marks || {}; armor = d.armor || {}; armorLook = d.armorLook || {};
+      closeModal(); persist(); render(); toast("Progress imported"); return; }
+    case "info": hideTip(); infoModal(); return;
+    case "sound-test": playGodSound(); return;
+    case "sound-reset":
+      soundURL = null; local.del(LSOUND);
+      if(soundRef) soundRef.delete().catch(()=>{});
+      soundModal("Switched back to the built-in chime."); return;
+  }
+});
+document.addEventListener("input", e => {
+  const t = e.target;
+  if(t.id === "wq"){ S.q = t.value; $("#list").innerHTML = weaponList(S.view === "vault" ? "vault" : "all"); }
+  if(t.id === "aq"){ S.aq = t.value; $("#alist").innerHTML = armorList("all"); }
+  if(t.id === "vaq"){ S.vaq = t.value; $("#alist").innerHTML = armorList("vault"); }
+});
+document.addEventListener("change", e => {
+  if(e.target.id === "importFile"){
+    const f = e.target.files && e.target.files[0]; e.target.value = ""; if(!f) return;
+    f.text().then(txt => {
+      let d; try{ d = JSON.parse(txt); }catch(err){ d = null; }
+      if(!d || typeof d !== "object" || !(d.marks || d.armor || d.armorLook)){ toast("That file isn't an Endgame API progress export."); return; }
+      importModal(d);
+    });
+    return;
+  }
+  if(e.target.id !== "soundFile") return;
+  const f = e.target.files && e.target.files[0]; if(!f) return;
+  const rd = new FileReader();
+  rd.onload = async () => {
+    soundURL = rd.result;
+    const keptLocal = local.set(LSOUND, soundURL);
+    let synced = false;
+    if(soundRef && soundURL.length < 240000){ try{ await soundRef.set({url:soundURL, name:f.name}); synced = true; }catch(err){} }
+    soundModal(synced ? `Saved “${f.name}” to your account.` : keptLocal ? `Saved “${f.name}” in this browser. Clips under about 170 KB also sync to your other devices.` : `Loaded “${f.name}” for this visit only. Try a shorter clip so it can be saved.`);
+    playGodSound();
+  };
+  rd.readAsDataURL(f);
+});
+document.addEventListener("toggle", e => { if(e.target.classList && e.target.classList.contains("filters")) S.fOpen = e.target.open; }, true);
+document.addEventListener("keydown", e => {
+  if(e.key === "Escape"){ if(!menu.hidden){ closeMenu(); return; } if(!overlay.hidden) closeModal(); }
+});
+addEventListener("scroll", closeMenu, {passive:true});
+addEventListener("resize", closeMenu);
+/* hover labels for icons */
+const tip = document.getElementById("tip"); let tipFor = null;
+function showTip(el){
+  const text = el.getAttribute("data-tip"); if(!text) return;
+  tipFor = el; tip.textContent = text; tip.hidden = false; tip.classList.remove("below");
+  const r = el.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
+  let left = r.left + r.width/2 - tw/2; left = Math.max(8, Math.min(left, innerWidth - tw - 8));
+  let top = r.top - th - 8;
+  if(top < 8){ top = r.bottom + 8; tip.classList.add("below"); }
+  tip.style.left = left + "px"; tip.style.top = top + "px";
+  tip.style.setProperty("--ax", (r.left + r.width/2 - left) + "px");
+}
+function hideTip(){ tip.hidden = true; tipFor = null; }
+document.addEventListener("pointerover", e => { const el = e.target.closest && e.target.closest("[data-tip]"); if(el && el !== tipFor) showTip(el); else if(!el && tipFor) hideTip(); });
+document.addEventListener("focusin", e => { const el = e.target.closest && e.target.closest("[data-tip]"); if(el) showTip(el); });
+document.addEventListener("focusout", e => { if(e.target === tipFor) hideTip(); });
+addEventListener("scroll", hideTip, {passive:true, capture:true});
+
+/* keep the category bar pinned right under the top bar */
+const topbar = document.querySelector(".topbar");
+function setHdr(){ document.documentElement.style.setProperty("--hdr", topbar.offsetHeight + "px"); }
+try{ new ResizeObserver(setHdr).observe(topbar); }catch(err){ addEventListener("resize", setHdr); }
+setHdr();
+function catTop(){ const s = document.querySelector(".cat-sentinel"); return s ? s.getBoundingClientRect().top + scrollY - topbar.offsetHeight : 0; }
+function stuck(){ return document.querySelector(".cat-sentinel") && scrollY > catTop() + 2; }
+function toCatbar(){ scrollTo({top: Math.max(0, catTop())}); }
+/* mouse wheel scrolls the archetype strip sideways */
+document.addEventListener("wheel", e => {
+  const c = e.target.closest && e.target.closest(".chips");
+  if(!c || c.scrollWidth <= c.clientWidth || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+  e.preventDefault(); c.scrollLeft += e.deltaY;
+}, {passive:false});
+
+try{ PHONE.addEventListener("change", () => render()); }catch(err){}
+function fromHash(){ const h = location.hash.replace("#",""); if(["weapons","armor","vault"].includes(h)) S.view = h; render(); }
+addEventListener("hashchange", fromHash);
+setSync("loading");
+fromHash();
+initSync();
+})();
+</script>
