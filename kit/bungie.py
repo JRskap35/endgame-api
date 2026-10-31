@@ -8,6 +8,9 @@ Bungie's public manifest needs no API key; images come from https://www.bungie.n
   frames           : the weapon's own intrinsic (frame) socket
   perks/barrels/mags/origin traits : the weapon's own sockets first, then any Bungie plug with that name
   masterwork       : Bungie's "Masterworked: <stat>" icons
+  archetype silhouettes : Banshee's Gunsmith Order icons (one per weapon type), see ARCH_ORDER
+  header icons     : Bungie's ammo type art for Primary, Secondary and Heavy, and Collections and Tower art for the
+                     Weapons, Armor and Vault tabs (Joe's picks), see HEADER_ART
   energy           : DestinyDamageTypeDefinition      stun : DestinyBreakerTypeDefinition
   armor sets       : 2 and 4 piece bonus icons (DestinySandboxPerkDefinition); the set's own icon uses
                      whichever bonus icon the sheet uses for that set
@@ -16,6 +19,7 @@ Armor stat icons, the logo and the background are Joe's and are not touched here
 import json, sys, os, re, io, base64, subprocess, collections, hashlib
 from concurrent.futures import ThreadPoolExecutor
 import numpy as np
+from scipy import ndimage
 from PIL import Image
 
 DATA, ICONS, TICONS, ELEMS, OUT = sys.argv[1:6]
@@ -41,6 +45,7 @@ def comp(k):
 items = comp("DestinyInventoryItemDefinition"); plugsets = comp("DestinyPlugSetDefinition")
 sets = comp("DestinyEquipableItemSetDefinition"); sperks = comp("DestinySandboxPerkDefinition")
 dmg = comp("DestinyDamageTypeDefinition"); brk = comp("DestinyBreakerTypeDefinition")
+nodes = comp("DestinyPresentationNodeDefinition"); vendors = comp("DestinyVendorDefinition"); loadicons = comp("DestinyLoadoutIconDefinition")
 
 data = json.load(open(DATA)); icons = json.load(open(ICONS)); ticons = json.load(open(TICONS)); elems = json.load(open(ELEMS))
 nn = lambda s: re.sub(r"[^a-z0-9]", "", (s or "").lower().replace("’", "'"))
@@ -116,6 +121,49 @@ for w in data["weapons"]:
         p = MW.get(MWN.get(st, st))
         if p: need.add(p)
         else: report["masterwork without Bungie icon"].append(st)
+# weapon type silhouettes for the archetype buttons: Banshee-44's Gunsmith Orders carry a clean white silhouette per type.
+# Bungie has no rocket sidearm order and nothing for the sheet's mixed "Other". Breech grenade launchers use a cut out of the
+# breech launcher in Bungie's cyan "Blast Radius" artifact perk icon (ARCH_ART), chosen by Joe; heavy ones keep the order.
+ARCH_ORDER = {"Autos": "Auto Rifles", "Bows": "Bows", "HCs": "Hand Cannons", "Pulses": "Pulse Rifles", "Scouts": "Scout Rifles",
+              "Sidearms": "Sidearms", "SMGs": "Submachine Guns", "BGLs": "Grenade Launchers", "Fusions": "Fusion Rifles",
+              "Glaives": "Glaives", "Shotguns": "Shotguns", "Snipers": "Sniper Rifles", "Rocket Sidearms": "Sidearms Head-on",
+              "Traces": "Trace Rifles", "HGLs": "Grenade Launchers", "LFRs": "Linear Fusion Rifles", "LMGs": "Machine Guns",
+              "Rockets": "Rocket Launchers", "Swords": "Swords", "Other": "Banshee's Arsenal"}
+ORDERS = {it["displayProperties"]["name"]: it["displayProperties"]["icon"] for it in items.values()
+          if it.get("itemTypeDisplayName") == "Gunsmith Order" and it.get("displayProperties", {}).get("icon")}
+ARCH_ART = {"BGLs": ([627527846, 1124307423], "cyan-lower")}   # sandbox perk hashes (same icon), and how to cut the gun out
+archplan = {}
+for a in data["ammo"].values():
+    for sec in a:
+        p, mode = ORDERS.get(ARCH_ORDER.get(sec, "")), "tile"
+        for h in (ARCH_ART.get(sec) or ([], ""))[0]:
+            ic = sperks.get(str(h), {}).get("displayProperties", {}).get("icon")
+            if ic: p, mode = ic, ARCH_ART[sec][1]; break
+        else:
+            if sec in ARCH_ART: report["chosen silhouette art missing, using the Gunsmith order"].append(sec)
+        if p: archplan[sec] = (p, mode); need.add(p)
+        else: report["weapon type without a Bungie silhouette"].append(sec)
+# header icons Joe picked: bungie.net's ammo type images (the same art as the Collections ammo nodes, which are the fallback),
+# the gold weapon rack (Collections "Weapons" node), the gold helmet (Collections "Armor" node), and the Vault's small symbol
+HEADER_ART = {"primary": ["/img/destiny_content/ammo_types/primary.png", ("node", 1731162900, "icon")],
+              "special": ["/img/destiny_content/ammo_types/special.png", ("node", 638914517, "icon")],
+              "heavy":   ["/img/destiny_content/ammo_types/heavy.png", ("node", 3686962409, "icon")],
+              "all":     [("loadout", 1143786709, "iconImagePath")],          # crossed swords (a loadout icon)
+              "other":   [("vendor", 672118013, "smallTransparentIcon")],     # Banshee-44's bullet; the app tints it gold
+              "weapons": [("node", 1528930164, "icon")],
+              "armor":   [("node", 1605042242, "icon")],
+              "vault":   [("vendor", 1037843411, "smallTransparentIcon"), ("vendor", 1037843411, "icon")]}
+headplan = {}
+for k, opts in HEADER_ART.items():
+    paths = []
+    for o in opts:
+        if isinstance(o, str): paths.append(o)
+        else:
+            if o[0] == "loadout": ic = loadicons.get(str(o[1]), {}).get(o[2])
+            else: ic = (nodes if o[0] == "node" else vendors).get(str(o[1]), {}).get("displayProperties", {}).get(o[2])
+            if ic: paths.append(ic)
+    if paths: headplan[k] = paths; need.update(paths)
+    else: report["header icon missing"].append(k)
 DMG = {d["displayProperties"]["name"].lower(): d["displayProperties"].get("icon") for d in dmg.values() if d["displayProperties"].get("icon")}
 BRK = {"Barrier": "Shield Piercing", "Overload": "Disruption", "Unstoppable": "Stagger"}
 BRKI = {d["displayProperties"]["name"]: d["displayProperties"].get("icon") for d in brk.values()}
@@ -210,6 +258,111 @@ for ours, theirs in BRK.items():
     p = BRKI.get(theirs); im = load(p) if p else None
     if im is not None: data["stun"][ours] = glyph(im, 64); done["stun icons"] += 1
 
+def sil_alpha(im, mode):
+    """the weapon's shape as an alpha mask (0..1), trimmed to its outline"""
+    a = np.asarray(im.convert("RGB")).astype(float) / 255.0
+    if mode == "cyan-lower":   # bright cyan art on a teal tile with two guns: keep the lower (breech) one
+        alpha = np.clip((np.minimum(a[..., 1], a[..., 2]) - a[..., 0] - 0.47) / 0.31, 0, 1)
+        alpha[int(alpha.shape[0] * 0.78):] = 0          # drop the row of triangles under the guns
+        lab, k = ndimage.label(alpha > 0.35)
+        if k >= 1:
+            sizes = ndimage.sum(alpha > 0.35, lab, range(1, k + 1)); big = np.argsort(sizes)[::-1][:2] + 1
+            low = max(big, key=lambda i: np.where(lab == i)[0].mean())
+            alpha = alpha * ndimage.binary_dilation(lab == low, iterations=2)
+    else:                      # Gunsmith Order tile: white art on gray with a thin frame
+        a = a[6:-6, 6:-6]; alpha = np.clip((a.mean(axis=2) - 0.38) / 0.42, 0, 1)
+    ys, xs = np.where(alpha > 0.15)
+    return alpha[ys.min():ys.max() + 1, xs.min():xs.max() + 1] if ys.size else alpha
+def trim(alpha):
+    ys, xs = np.where(alpha > 0.15)
+    return alpha[ys.min():ys.max() + 1, xs.min():xs.max() + 1] if ys.size else alpha
+def straighten(alpha, kind):
+    """Bungie draws the glaive and the bow on a diagonal; lay them flat like the sword (Joe's request).
+    The tilt comes from the shape's long axis, so this still works if Bungie redraws them.
+    glaive: blade (the heavier end) on the right, like the sword. bow: tips level, curve bowing upward."""
+    ys, xs = np.nonzero(alpha > 0.3)
+    if xs.size < 10: return alpha
+    wts = alpha[ys, xs]; cx, cy = np.average(xs, weights=wts), np.average(ys, weights=wts)
+    cov = np.cov(np.vstack([xs - cx, ys - cy]), aweights=wts)
+    vx, vy = np.linalg.eigh(cov)[1][:, -1]                   # long axis, image coordinates (y down)
+    big = Image.fromarray((alpha * 255).astype(np.uint8), "L")
+    big = big.resize((big.width * 4, big.height * 4), Image.LANCZOS)
+    out = np.asarray(big.rotate(np.degrees(np.arctan2(vy, vx)), resample=Image.BICUBIC, expand=True)).astype(float) / 255.0
+    out = trim(out)
+    if kind == "glaive":
+        half = out.shape[1] // 2
+        if out[:, :half].sum() > out[:, half:].sum(): out = out[:, ::-1]
+    elif kind == "bow":
+        rows = out.sum(axis=1); cy = (rows * np.arange(len(rows))).sum() / max(rows.sum(), 1)
+        if cy > len(rows) / 2: out = out[::-1, :]            # the limb carries most of the ink, so it should sit on top
+    return out
+STRAIGHTEN = {"Glaives": "glaive", "Bows": "bow"}
+# every silhouette goes on the same 5:2 canvas, scaled so each shows about the same amount of ink (long thin guns grow,
+# short chunky ones shrink) without leaving the box, so the buttons look even despite different angles and thickness
+CW, CH = 200, 80
+alphas = {}
+for sec, (p, mode) in archplan.items():
+    im = load(p)
+    if im is not None:
+        alphas[sec] = sil_alpha(im, mode)
+        if sec in STRAIGHTEN: alphas[sec] = straighten(alphas[sec], STRAIGHTEN[sec])
+fit = {k: min(CW * 0.96 / a.shape[1], CH * 0.9 / a.shape[0]) for k, a in alphas.items()}
+target = float(np.median([fit[k] ** 2 * a.sum() for k, a in alphas.items()])) * 0.62 if alphas else 1
+icons["a"] = {}
+for sec, a in alphas.items():
+    sc = min(fit[sec], (target / max(a.sum(), 1)) ** 0.5)
+    w, h = max(1, round(a.shape[1] * sc)), max(1, round(a.shape[0] * sc))
+    m = Image.fromarray((a * 255).astype(np.uint8), "L").resize((w, h), Image.LANCZOS)
+    # thin line art (the bow, the glaive) still reads faint at full size, so thicken its strokes a little
+    arr = np.asarray(m).astype(float); pad = 4
+    arr = np.pad(arr, pad); w, h = w + 2 * pad, h + 2 * pad
+    if arr.sum() / 255.0 < target * 0.6:   # one light pass only, so the bow keeps the gap between string and limb
+        arr = np.maximum(arr, ndimage.grey_dilation(arr, size=(2, 2)) * 0.85)
+    m = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), "L")
+    w, h = min(w, CW), min(h, CH); m = m.crop(((m.width - w) // 2, (m.height - h) // 2, (m.width - w) // 2 + w, (m.height - h) // 2 + h))
+    canvas = Image.new("RGBA", (CW, CH), (255, 255, 255, 0)); glyph_im = Image.new("RGBA", (w, h), (255, 255, 255, 255)); glyph_im.putalpha(m)
+    canvas.paste(glyph_im, ((CW - w) // 2, (CH - h) // 2), glyph_im)
+    icons["a"][sec] = uri(canvas, optimize=True); done["weapon type silhouettes"] += 1
+
+HEAD_GRAY, HEAD_GOLD = np.array([255, 252, 237.]), np.array([255, 233, 145.])   # the off white and gold of Bungie's gold Collections art
+def header_tone(k, im):
+    """Joe asked for the three tab icons to share one look: the helmet's gray parts are lifted a touch to sit level with
+    the weapon rack, and the plain white vault symbol becomes the same soft gray with a gold center dot and ring."""
+    a = np.asarray(im.convert("RGBA")).astype(float)
+    if k == "armor":
+        rgb = a[..., :3]; sat = (rgb.max(2) - rgb.min(2)) / np.maximum(rgb.max(2), 1)
+        a[..., 3] = np.where(sat < 0.18, np.clip(a[..., 3] * 1.15, 0, 255), a[..., 3])
+    elif k == "vault":
+        # gold on exactly the center dot and the first ring around it, found from the symbol itself: the brightness
+        # profile going out from the dot dips at each gap between rings
+        h, w = a.shape[:2]; yy, xx = np.mgrid[0:h, 0:w]
+        shape = a[..., 3] / 255 * (a[..., :3].mean(2) / 255)
+        r0 = np.hypot(xx - w / 2, yy - h / 2); near = shape * (r0 < w * 0.12)
+        cx, cy = (xx * near).sum() / max(near.sum(), 1e-6), (yy * near).sum() / max(near.sum(), 1e-6)
+        r = np.hypot(xx - cx, yy - cy); step = w / 192
+        prof = [shape[(r >= q) & (r < q + step)].mean() if ((r >= q) & (r < q + step)).any() else 0 for q in np.arange(0, w / 3, step)]
+        i = next((j for j, v in enumerate(prof) if j > 2 and v < 0.15), None)                 # end of the dot
+        i = next((j for j in range(i, len(prof)) if prof[j] > 0.5), None) if i is not None else None   # first ring starts
+        i = next((j for j in range(i + 1, len(prof) - 1) if prof[j] < 0.8 and prof[j] <= prof[j - 1] and prof[j] <= prof[j + 1]), None) if i is not None else None
+        edge = (i * step) if i is not None else w * 0.15                                       # middle of the gap after it
+        gold = np.clip((edge - r) / (step * 2) + 0.5, 0, 1)
+        a[..., :3] = gold[..., None] * HEAD_GOLD + (1 - gold[..., None]) * HEAD_GRAY
+        a[..., 3] = shape * (gold * 125 + (1 - gold) * 145)                                     # muted, like the rack's gold
+    else:
+        return im
+    return Image.fromarray(np.clip(a, 0, 255).astype(np.uint8), "RGBA")
+icons["n"] = {}
+for k, paths in headplan.items():
+    for p in paths:   # first one that downloads wins
+        im = load(p)
+        if im is None: continue
+        a = np.asarray(im)[..., 3]; ys, xs = np.where(a > 12)
+        if ys.size: im = im.crop((xs.min(), ys.min(), xs.max() + 1, ys.max() + 1))
+        if im.height > 96: im = im.resize((round(im.width * 96 / im.height), 96), Image.LANCZOS)
+        im = header_tone(k, im)
+        icons["n"][k] = uri(im, optimize=True); done["header icons"] += 1; break
+    else: report["header icon download failed"].append(k)
+
 def vec(im):
     bg = Image.new("RGBA", im.size, (0, 0, 0, 255)); bg.alpha_composite(im)
     return np.asarray(bg.convert("L").resize((32, 32))).astype(float).ravel()
@@ -243,7 +396,7 @@ lines = [f"Bungie manifest {ver}",
          f"weapon images {done['weapon images']}/{len(data['weapons'])}, frames {done['frames']}/{sum(1 for w in data['weapons'] if w['frame'])}, "
          f"perk slots {done['perk slots']}/{slots}, barrels {done['barrel icons']}/{sum(len(w['barrel']) for w in data['weapons'])}, "
          f"mags {done['mag icons']}/{sum(len(w['mag']) for w in data['weapons'])}, masterwork {done['masterwork icons']}, origin traits {done['origin traits']}, energy {done['energy icons']}/6, stun {done['stun icons']}/3, "
-         f"set icons {done['set icons']}/{len(data['sets'])}, set bonus icons {done['set bonus icons']}/{sum(len(s['bonuses']) for s in data['sets'])}"]
+         f"header icons {done['header icons']}/8, weapon type silhouettes {done['weapon type silhouettes']}/{sum(len(a) for a in data['ammo'].values())}, set icons {done['set icons']}/{len(data['sets'])}, set bonus icons {done['set bonus icons']}/{sum(len(s['bonuses']) for s in data['sets'])}"]
 for k, v in report.items():
     lines.append(f"{k} ({len(set(v))}, these keep the sheet's icon): " + ", ".join(sorted(set(v))[:40]))
 open(os.path.join(OUT, "report.txt"), "w").write("\n".join(lines) + "\n")

@@ -50,6 +50,11 @@ button{font:inherit;color:inherit}
 .nav button{appearance:none;background:none;border:0;cursor:pointer;position:relative;height:60px;padding:0 18px;
   font-family:var(--font-display);font-weight:600;font-size:17px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
 .nav button:hover{color:var(--fg)}
+.nav-ico{height:30px;width:auto;flex:none;margin-right:2px}
+.nav-ico[data-n="vault"]{height:24px}
+.ammo-ico{height:16px;width:auto;flex:none;display:block}
+.ammo-ico.tint{width:16px;height:18px;background:var(--ammo);-webkit-mask:var(--src) center/contain no-repeat;mask:var(--src) center/contain no-repeat;filter:drop-shadow(0 0 4px color-mix(in srgb,var(--ammo) 45%,transparent))}
+.ammo-slot[style*="ammo-all"] .ammo-ico{height:20px}
 .nav button[aria-current="page"]{color:var(--fg)}
 .nav button[aria-current="page"]::after{content:"";position:absolute;left:14px;right:14px;bottom:-1px;height:2px;background:var(--accent);box-shadow:0 0 10px rgba(201,178,119,.6)}
 .top-right{margin-left:auto;display:flex;align-items:center;gap:10px}
@@ -146,6 +151,30 @@ a.btn svg{width:14px;height:14px}
 .ammo-tab[aria-pressed="true"]{color:var(--fg);border-bottom-color:var(--ammo)}
 .ammo-swatch{width:8px;height:8px;background:var(--ammo);transform:rotate(45deg);box-shadow:0 0 6px color-mix(in srgb,var(--ammo) 60%,transparent)}
 .ammo-tab .count{font-size:11px}
+.ammo-slot{display:flex;align-items:center;flex:none}
+.ammo-tab .dd-caret{width:14px;height:14px;margin-left:-3px;opacity:.55;transition:transform .15s ease,opacity .15s ease}
+.ammo-tab[aria-expanded="true"] .dd-caret{transform:rotate(180deg);opacity:.95}
+.ammo-pick{display:inline-flex;align-items:center;gap:7px;margin:0 10px 0 0;padding:3px 4px 3px 9px;border:1px solid color-mix(in srgb,var(--ammo,var(--line-2)) 55%,var(--line-2));border-radius:2px;
+  font-family:var(--font-display);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--fg);white-space:nowrap;background:rgba(255,255,255,.03)}
+.sil-s{display:block;width:40px;height:16px;background:currentColor;-webkit-mask:var(--sil) center/contain no-repeat;mask:var(--sil) center/contain no-repeat;opacity:.9}
+.pick-x{appearance:none;background:none;border:0;color:var(--muted);cursor:pointer;width:22px;height:22px;display:grid;place-items:center;border-radius:2px}
+.pick-x:hover{color:var(--fg);background:rgba(255,255,255,.06)}
+.pick-x svg{width:13px;height:13px}
+.ammo-dd{position:absolute;z-index:30;min-width:320px;max-width:calc(100vw - 24px);max-height:min(70vh,560px);overflow:auto;padding:6px;
+  background:var(--panel-solid);border:1px solid var(--line-2);border-top:2px solid var(--ammo);box-shadow:0 18px 50px rgba(0,0,0,.55);border-radius:0 0 3px 3px;animation:ddin .14s ease-out}
+@keyframes ddin{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.dd-item{appearance:none;width:100%;display:grid;grid-template-columns:72px 1fr auto;align-items:center;gap:12px;padding:9px 12px;background:none;border:0;border-left:2px solid transparent;
+  color:var(--muted);cursor:pointer;text-align:left;font-family:var(--font-display);font-weight:600;font-size:15px;letter-spacing:.08em;text-transform:uppercase;border-radius:2px}
+.dd-item:hover,.dd-item:focus-visible{background:rgba(255,255,255,.05);color:var(--fg);outline:none}
+.dd-item[aria-checked="true"]{color:var(--fg);border-left-color:var(--ammo);background:color-mix(in srgb,var(--ammo) 12%,transparent)}
+.dd-item.empty{opacity:.45}
+.dd-item:first-child{border-bottom:1px solid var(--line);margin-bottom:4px;border-radius:2px 2px 0 0}
+.dd-item .count{font-size:11px}
+.sil-m{display:block;width:72px;height:28px;background:currentColor;-webkit-mask:var(--sil) center/contain no-repeat;mask:var(--sil) center/contain no-repeat}
+.sil-m.all{-webkit-mask:none;mask:none;background:none;position:relative}
+.sil-m.ammo{-webkit-mask:none;mask:none;background:none;display:grid;place-items:center}
+.sil-m.ammo .ammo-ico{height:20px}
+.sil-m.all::before{content:"";position:absolute;left:50%;top:50%;width:9px;height:9px;transform:translate(-50%,-50%) rotate(45deg);background:var(--ammo);box-shadow:0 0 6px color-mix(in srgb,var(--ammo) 60%,transparent)}
 .chips{display:flex;flex-wrap:nowrap;align-items:center;gap:6px;overflow-x:auto;scrollbar-width:thin;scrollbar-color:var(--line-2) transparent;padding-block:10px;
   -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent);padding-right:28px}
 .chips:empty{display:none}
@@ -154,6 +183,10 @@ a.btn svg{width:14px;height:14px}
 .chip:hover{color:var(--fg);border-color:var(--line-2)}
 .chip[aria-pressed="true"]{background:var(--fg);color:var(--ink);border-color:var(--fg)}
 .chip .count{font-size:10.5px}
+.chip:has(.sil){align-items:center}
+.chip .sil{flex:none;display:block;height:26px;width:65px;margin-block:-4px;background:currentColor;opacity:.9;
+  -webkit-mask:var(--sil) center/contain no-repeat;mask:var(--sil) center/contain no-repeat}
+.chip[aria-pressed="true"] .sil{opacity:1}
 .chip[aria-pressed="true"] .count{color:var(--ink);opacity:.6}
 .chip.empty{opacity:.4}
 .chip-sep{flex:none;width:2px;height:18px;margin-inline:4px;background:var(--ammo);opacity:.8;border-radius:1px}
@@ -218,7 +251,7 @@ table{width:100%;border-collapse:separate;border-spacing:0}
 .wtable .thumb{margin-inline:auto}
 .wtable .status-btn{margin-inline:auto}
 .wtable td{padding:4px 8px}
-.atable td{padding-block:5px}
+.atable td{padding-block:14px}
 .wtable th{padding:8px}
 .atable{min-width:1000px;table-layout:fixed}
 .atable th{text-align:center;white-space:nowrap;letter-spacing:.1em}
@@ -228,6 +261,36 @@ table{width:100%;border-collapse:separate;border-spacing:0}
 .atable .set-txt .nm{display:flex;align-items:center;gap:4px}
 .atable .expand{flex:none;width:26px;height:26px}
 .atable .bonuses{display:grid;text-align:left;justify-items:start;padding-left:14px}
+/* desktop spacing pass (Joe, Oct 31): bigger weapon art and icons, names sit beside the art, armor rows breathe */
+.wtable .thumb{width:60px;height:60px}
+.wtable .status-btn{width:36px;height:36px}
+.wtable .c-name{text-align:left}
+.wtable .c-name .nm{justify-content:flex-start;gap:6px;padding-left:6px}
+.wtable .wname{font-size:17px}
+.wtable .wsub{font-size:13px;margin-top:3px}
+.wtable .variant{font-size:12.5px}
+.wtable .ic{width:48px;height:48px}
+.wtable .ic img{width:40px;height:40px}
+.wtable .ic img.stun{width:36px;height:36px}
+.wtable .ic.frame img{width:46px;height:46px}
+.wtable thead tr:not(.bands) th:nth-child(3){text-align:left;padding-left:22px}
+.wtable thead tr:not(.bands) th:nth-child(3) .hs{justify-content:flex-start}
+.wtable .pk{grid-auto-rows:36px}
+.wtable .pk .ic{width:34px;height:34px}
+.wtable .pk .ic img{width:31px;height:31px}
+.wtable .c-src{font-size:14.5px;line-height:1.3}
+.wtable .tier{width:34px;height:34px;font-size:20px}
+.wtable td{padding:8px 10px}
+.atable .set{gap:14px}
+.atable .set-icon{width:54px;height:54px}
+.atable .set-name{font-size:17px}
+.atable .set-meta{margin-top:4px}
+.atable .bonus{font-size:14.5px}
+.atable .bonus + .bonus{margin-top:11px}
+.atable .bonus img.bi{width:24px;height:24px}
+.atable .tier.sm{width:23px;height:23px;font-size:14px}
+.atable .piece{width:60px;height:60px}
+.atable .piece .glyph{width:36px;height:36px}
 .atable th:nth-child(1),.atable th:nth-child(2){text-align:left;padding-left:20px}
 .atable tr.bands th{text-align:center!important;padding-left:8px!important}
 tr.bands .b-bonus{background:var(--sh-perks)!important} tr.bands .b-pieces{background:var(--sh-analysis)!important}
@@ -492,10 +555,16 @@ tr.detail.adetail td{padding-left:72px}
   .topbar-in{gap:0 12px}
   .nav{order:3;width:100%;border-top:1px solid var(--line)}
   .nav button{flex:1;justify-content:center;height:46px;padding:0 6px;font-size:15px;letter-spacing:.14em}
+  .nav-ico{height:22px}
+  .nav button{gap:6px;letter-spacing:.1em;min-width:0}
+  .nav-ico[data-n="vault"]{height:18px}
+  .ammo-ico{height:14px}
   .brand{height:54px}
   .sync .label{display:none}
   h1{font-size:36px}
-  .ammo-tab{font-size:16px;padding:10px 14px}
+  .ammo-tab{font-size:16px;padding:10px 10px}
+  .ammo-pick .sil-s{display:none}
+  .ammo-pick{font-size:12px;margin-right:6px;padding-left:8px}
   tr.detail td,tr.detail.adetail td{padding-left:14px}
   .seg{flex-wrap:nowrap;overflow-x:auto;max-width:100%;scrollbar-width:none}
   .seg::-webkit-scrollbar{display:none}
@@ -534,9 +603,9 @@ tr.detail.adetail td{padding-left:72px}
       </button>
     </div>
     <nav class="nav" aria-label="Sections">
-      <button type="button" data-act="nav" data-view="weapons">Weapons</button>
-      <button type="button" data-act="nav" data-view="armor">Armor</button>
-      <button type="button" data-act="nav" data-view="vault">Vault <span class="count" id="navCount"></span></button>
+      <button type="button" data-act="nav" data-view="weapons"><img class="nav-ico" data-n="weapons" alt="" hidden>Weapons</button>
+      <button type="button" data-act="nav" data-view="armor"><img class="nav-ico" data-n="armor" alt="" hidden>Armor</button>
+      <button type="button" data-act="nav" data-view="vault"><img class="nav-ico" data-n="vault" alt="" hidden>Vault <span class="count" id="navCount"></span></button>
     </nav>
     <div class="top-right">
       <span class="sync" id="sync" role="status"><span class="dot"></span><span class="label">Loading</span></span>
@@ -621,6 +690,13 @@ const tierVar = t => `var(--t-${String(t).toLowerCase()})`;
 const SORT_FIELDS = [["name","Name"],["element","Energy"],["frame","Frame"],["source","Source"],["stun","Stun"],["p1","Perk 1"],["p2","Perk 2"],["origin","Origin Trait"],["tier","Tier"]];
 const FILTER_FIELDS = [["act","Activity"],["a","Ammo Type"],["element","Energy"],["stun","Stun Type"],["tier","Tier"],["frame","Frame"],["season","Season"]];
 const AMMO_LABEL = Object.fromEntries(AMMO.map(a => [a.key, a.label]));
+// full weapon type names for the sheet's section shorthand (the shorthand stays the data key, so saved progress is untouched)
+const ARCH_NAME = {Autos:"Auto Rifles", HCs:"Hand Cannons", Pulses:"Pulse Rifles", Scouts:"Scout Rifles", SMGs:"Submachine Guns",
+  BGLs:"Breech Grenade Launchers", Fusions:"Fusion Rifles", Snipers:"Sniper Rifles", Traces:"Trace Rifles",
+  HGLs:"Heavy Grenade Launchers", LFRs:"Linear Fusion Rifles", LMGs:"Machine Guns", Rockets:"Rocket Launchers"};
+const archName = ar => ARCH_NAME[ar] || ar;
+// Bungie's weapon type silhouette (from Banshee's Gunsmith Orders), drawn as a mask so it takes the text color
+function sil(ar){ const u = iconURL("a", ar); return u ? `<span class="sil" style="--sil:url('${u}')" aria-hidden="true"></span>` : ""; }
 const fieldVals = (w, f) => f === "act" ? w.acts : [w[f]];
 const MLABEL = {god:"God Roll",semi:"Semi-God Roll",looking:"Looking for"};
 const ammoNum = w => { const s = w.stats[0]; const n = s ? parseFloat(s[1]) : NaN; return isNaN(n) ? -1 : n; };
@@ -632,7 +708,7 @@ const iconCache = {};
 function iconURL(kind, id){
   const key = kind + id;
   if(iconCache[key]) return iconCache[key];
-  const src = ICON_SRC[kind][id];
+  const src = (ICON_SRC[kind] || {})[id];
   if(!src) return "";
   try{
     const [head, b64] = src.split(",");
@@ -643,6 +719,13 @@ function iconURL(kind, id){
   }catch(e){ iconCache[key] = src; }
   return iconCache[key];
 }
+// Bungie art beside the Weapons, Armor and Vault tabs and the Primary, Secondary and Heavy headers (Joe's picks)
+document.querySelectorAll(".nav-ico").forEach(i => { const u = iconURL("n", i.dataset.n); if(u){ i.src = u; i.hidden = false; } });
+const ammoIcon = k => {
+  const u = iconURL("n", k); if(!u) return `<span class="ammo-swatch"></span>`;
+  // Other's bullet is drawn as a mask so it takes the same gold as Other's color everywhere else
+  return k === "other" ? `<span class="ammo-ico tint" style="--src:url('${u}')" aria-hidden="true"></span>` : `<img class="ammo-ico" src="${u}" alt="">`;
+};
 
 /* ================= ICONS ================= */
 const I = {
@@ -917,10 +1000,15 @@ function render(){
   if(S.view === "weapons") html = weaponBrowser("all");
   if(S.view === "armor")   html = armorBlock("all");
   if(S.view === "vault")   html = vaultView();
-  const strip = document.querySelector(".chips"), keep = strip ? strip.scrollLeft : 0;
+  closeDD();
   $("#main").innerHTML = html;
-  const ns = document.querySelector(".chips");
-  if(ns){ ns.scrollLeft = keep; }
+  // keep the active ammo tab, and the weapon type picked under it, in view when the tab strip scrolls (phones)
+  const strip = document.querySelector(".ammo-tabs"), slot = strip && [...strip.querySelectorAll(".ammo-slot")].find(x => x.querySelector('[aria-pressed="true"]'));
+  if(slot && strip.scrollWidth > strip.clientWidth){
+    const sr = strip.getBoundingClientRect(), r = slot.getBoundingClientRect();
+    if(r.width > sr.width - 12 || r.left < sr.left) strip.scrollLeft += r.left - sr.left - 4;   // too wide to fit: start at the tab
+    else if(r.right > sr.right) strip.scrollLeft += r.right - sr.right + 12;
+  }
   hideTip();
 }
 
@@ -931,19 +1019,15 @@ function weaponBrowser(mode){
   const base = baseWeapons(mode);
   const ammo = AMMO_TABS.find(a => a.key === S.ammo);
   const inAmmo = S.ammo === "all" ? base : base.filter(w => w.a === S.ammo);
-  const tabs = AMMO_TABS.map(a => `<button type="button" class="ammo-tab" data-act="ammo" data-k="${a.key}" aria-pressed="${a.key===S.ammo}" style="--ammo:var(--ammo-${a.key})"><span class="ammo-swatch"></span>${a.label}<span class="count">${a.key==="all"?base.length:base.filter(w=>w.a===a.key).length}</span></button>`).join("");
-  let chips = "";
-  if(ammo.archs.length > 1){
-    chips = `<button type="button" class="chip" data-act="arch" data-k="all" aria-pressed="${S.arch==="all"}">All <span class="count">${inAmmo.length}</span></button>`;
-    let lastAmmo = null;
-    ammo.archs.forEach(ar => {
-      const n = inAmmo.filter(w=>w.arch===ar).length, am = AMMO_OF_ARCH[ar];
-      if(S.ammo === "all" && am !== lastAmmo){ chips += `<span class="chip-sep" style="--ammo:var(--ammo-${am})" title="${AMMO_LABEL[am]}"></span>`; lastAmmo = am; }
-      chips += `<button type="button" class="chip ${n?"":"empty"}" data-act="arch" data-k="${esc(ar)}" aria-pressed="${S.arch===ar}">${esc(ar)} <span class="count">${n}</span></button>`;
-    });
-  }
+  // Primary, Secondary and Heavy open a dropdown of their weapon types (hover with a mouse, tap on touch);
+  // All Weapons and Other have none. The chosen type shows on the active tab with a clear button.
+  const tabs = AMMO_TABS.map(a => {
+    const dd = a.key !== "all" && a.archs.length > 1, on = a.key === S.ammo;
+    const pick = on && S.arch !== "all" ? `<span class="ammo-pick"><span class="sil-s" style="--sil:url('${iconURL("a", S.arch)}')" aria-hidden="true"></span>${esc(archName(S.arch))}<button type="button" class="pick-x" data-act="arch" data-k="all" aria-label="Show all ${esc(a.label)} weapons" title="Show all ${esc(a.label)}">${I.clear}</button></span>` : "";
+    return `<span class="ammo-slot" style="--ammo:var(--ammo-${a.key})"><button type="button" class="ammo-tab ${dd?"has-dd":""}" data-act="ammo" data-k="${a.key}" ${dd?`data-dd="${a.key}" aria-haspopup="true" aria-expanded="false"`:""} aria-pressed="${on}">${ammoIcon(a.key)}${a.label}<span class="count">${a.key==="all"?base.length:base.filter(w=>w.a===a.key).length}</span>${dd?`<svg class="dd-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>`:""}</button>${pick}</span>`;
+  }).join("");
   return `<div class="cat-sentinel"></div><div class="catbar artfill"><div class="ammo-tabs" aria-label="Ammo type">${tabs}</div>
-    <div class="chips" aria-label="Archetype">${chips}</div></div>
+    <div class="ammo-dd" id="ammoDD" role="menu" hidden data-mode="${mode}"></div></div>
     ${weaponControls(mode)}
     <div id="list">${weaponList(mode)}</div>`;
 }
@@ -995,7 +1079,7 @@ function matchStatus(w, st){
 }
 const flat = a => a.map(x => Array.isArray(x) ? x[0] : x).join(" ");
 function matchesQuery(w, q){
-  return (w.name + " " + w.var + " " + flat(w.p1) + " " + flat(w.p2) + " " + w.origin + " " + flat(w.barrel) + " " + flat(w.mag)).toLowerCase().includes(q);
+  return (w.name + " " + w.var + " " + w.arch + " " + archName(w.arch) + " " + flat(w.p1) + " " + flat(w.p2) + " " + w.origin + " " + flat(w.barrel) + " " + flat(w.mag)).toLowerCase().includes(q);
 }
 const ARCH_ORDER = Object.fromEntries(AMMO.flatMap(a => a.archs).map((x,i) => [x,i]));
 function sortList(list){
@@ -1038,7 +1122,7 @@ function weaponList(mode){
     const m = marks[w.id], open = !!S.open[w.id];
     const rowsN = Math.max(w.p1.length, w.p2.length, 1);
     const statusBtn = `<button type="button" class="status-btn ${m?"s-"+m:""}" data-act="status" data-id="${w.id}" aria-haspopup="menu" aria-label="Mark ${esc(w.name)}${m?" (currently "+MLABEL[m]+")":""}">${m ? I[m] : I.plus}</button>`;
-    const nameBlock = `<div class="nm"><div class="nm-txt"><button type="button" class="name-btn" data-act="open" data-id="${w.id}" aria-expanded="${open}"><span class="wname">${esc(w.name)}</span></button>${w.var?`<div class="variant">${esc(w.var)}</div>`:""}<div class="wsub">${showArch?esc(w.arch)+" · ":""}S${esc(w.season)}${m?` · <span class="mtag mt-${m}">${MLABEL[m]}</span>`:""}</div></div><button type="button" class="expand" data-act="open" data-id="${w.id}" aria-label="${open?"Hide":"Show"} details for ${esc(w.name)}">${I.chev}</button></div>`;
+    const nameBlock = `<div class="nm"><div class="nm-txt"><button type="button" class="name-btn" data-act="open" data-id="${w.id}" aria-expanded="${open}"><span class="wname">${esc(w.name)}</span></button>${w.var?`<div class="variant">${esc(w.var)}</div>`:""}<div class="wsub">${showArch?esc(archName(w.arch))+" · ":""}S${esc(w.season)}${m?` · <span class="mtag mt-${m}">${MLABEL[m]}</span>`:""}</div></div><button type="button" class="expand" data-act="open" data-id="${w.id}" aria-label="${open?"Hide":"Show"} details for ${esc(w.name)}">${I.chev}</button></div>`;
     const notes = open ? [w.frameNote, ...w.stats.map(s => s[3])].filter(Boolean) : [];
     const detailGrid = open ? detailPanel(w) : "";
     if(PHONE.matches){
@@ -1065,7 +1149,7 @@ function weaponList(mode){
     return row + `<tr class="detail"><td colspan="11">${detailGrid}</td></tr>`;
   }).join("");
   if(PHONE.matches) return head + `<div class="cards">${rows}</div>`;
-  const cols = [4,5.5,18.5,7.5,7.5,15,8,7.5,7.5,10,9].map(w => `<col style="width:${w}%">`).join("");
+  const cols = [4,7,21,6.5,6.5,15,6.5,8,8,9,8.5].map(w => `<col style="width:${w}%">`).join("");
   return head + `<div class="table-wrap"><table class="wtable"><colgroup>${cols}</colgroup><thead>
     <tr class="bands"><th colspan="3" class="b-weapon">WEAPON</th><th colspan="4" class="b-info">INFO</th><th colspan="3" class="b-perks">PERKS</th><th class="b-analysis">GRADE</th></tr>
     <tr><th><span class="sr">Status</span></th><th><span class="sr">Icon</span></th>${th("name","Name")}${th("element","Energy")}${th("frame","Frame")}${th("source","Source")}${th("stun","Stun")}${th("p1","Perk 1")}${th("p2","Perk 2")}${th("origin","Origin Trait")}${th("tier","Tier")}</tr></thead><tbody>${rows}</tbody></table></div>`;
@@ -1248,7 +1332,7 @@ function shotModal(id){
   overlay.classList.add("shotlay");
   overlay.innerHTML = `<div class="shotpop" role="dialog" aria-modal="true" aria-label="${esc(w.name)}" data-shot="${id}">
     <div class="shotframe ${m}" data-act="noop"><div class="ph loading"><img src="${iconURL("w", id)}" alt=""><span>Loading image</span></div></div>
-    <div class="shotcap" data-act="noop"><div><div class="nm2">${esc(w.name)}</div><div class="sub">${esc(w.arch)} · ${esc(w.element)} · S${esc(w.season)} · Tier ${esc(w.tier)}${status?` · <b class="${m}">${status}</b>`:""}</div></div>
+    <div class="shotcap" data-act="noop"><div><div class="nm2">${esc(w.name)}</div><div class="sub">${esc(archName(w.arch))} · ${esc(w.element)} · S${esc(w.season)} · Tier ${esc(w.tier)}${status?` · <b class="${m}">${status}</b>`:""}</div></div>
       <button type="button" class="close" data-act="modal-close" aria-label="Close" data-autofocus>${I.clear}</button></div>
   </div>`;
   overlay.hidden = false;
@@ -1266,7 +1350,7 @@ function weaponModal(id){
   const w = BYID[id], m = marks[id];
   openModal(`<div class="modal-head"><h2>Obtained</h2>${closeX}</div>
     <div class="modal-body">
-      <div class="wm-hero">${thumb(w,true)}<div><div class="wname">${esc(w.name)}</div>${w.var?`<div class="variant">${esc(w.var)}</div>`:""}<div class="wsub">${esc(w.arch)} · ${esc(w.element)} · Tier ${esc(w.tier)}</div></div></div>
+      <div class="wm-hero">${thumb(w,true)}<div><div class="wname">${esc(w.name)}</div>${w.var?`<div class="variant">${esc(w.var)}</div>`:""}<div class="wsub">${esc(archName(w.arch))} · ${esc(w.element)} · Tier ${esc(w.tier)}</div></div></div>
       <div class="target"><div><div class="k">Perk 1</div>${lines(w.p1)}</div><div><div class="k">Perk 2</div>${lines(w.p2)}</div></div>
       <p>How did the roll come out?</p>
       <div class="rolls">
@@ -1423,7 +1507,14 @@ document.addEventListener("click", e => {
     case "noop": return;
     case "overlay": case "modal-close": closeModal(); return;
     case "nav": S.view = t.dataset.view; S.aStat = "all"; if(location.hash !== "#"+S.view) location.hash = S.view; render(); scrollTo({top:0}); return;
-    case "ammo": { const st = stuck(); S.ammo = k; S.arch = "all"; render(); const c = document.querySelector(".chips"); if(c) c.scrollLeft = 0; if(st) toCatbar(); return; }
+    case "ammo": {
+      const st = stuck(), again = S.ammo === k && S.arch === "all";
+      const touch = lastPointer !== "mouse" && t.dataset.dd;
+      if(touch && again && ddFor === k){ closeDD(); return; }   // second tap on an open menu closes it
+      S.ammo = k; S.arch = "all"; render(); if(st) toCatbar();
+      if(touch){ const nt = document.querySelector(`.ammo-tab[data-dd="${k}"]`); if(nt) openDD(nt); }
+      return; }
+    case "pick": { const st = stuck(); S.ammo = t.dataset.ammo; S.arch = k; render(); if(st) toCatbar(); return; }
     case "arch": { const st = stuck(); S.arch = k; render(); if(st) toCatbar(); return; }
     case "sort": {
       const i = S.sorts.findIndex(s => s.key === k);
@@ -1563,12 +1654,56 @@ setHdr();
 function catTop(){ const s = document.querySelector(".cat-sentinel"); return s ? s.getBoundingClientRect().top + scrollY - topbar.offsetHeight : 0; }
 function stuck(){ return document.querySelector(".cat-sentinel") && scrollY > catTop() + 2; }
 function toCatbar(){ scrollTo({top: Math.max(0, catTop())}); }
-/* mouse wheel scrolls the archetype strip sideways */
-document.addEventListener("wheel", e => {
-  const c = e.target.closest && e.target.closest(".chips");
-  if(!c || c.scrollWidth <= c.clientWidth || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
-  e.preventDefault(); c.scrollLeft += e.deltaY;
-}, {passive:false});
+/* weapon type dropdowns under Primary, Secondary and Heavy */
+let ddFor = null, ddTimer = 0, lastPointer = "mouse";
+document.addEventListener("pointerdown", e => { lastPointer = e.pointerType || "mouse"; }, true);
+function openDD(tab){
+  const dd = document.getElementById("ammoDD"); if(!dd) return;
+  clearTimeout(ddTimer);
+  const key = tab.dataset.dd, a = AMMO.find(x => x.key === key); if(!a) return;
+  const base = baseWeapons(dd.dataset.mode).filter(w => w.a === key);
+  const item = (ar, label, n, icon) => `<button type="button" class="dd-item ${n?"":"empty"}" role="menuitemradio" aria-checked="${S.ammo===key && S.arch===ar}" data-act="pick" data-ammo="${key}" data-k="${esc(ar)}">${icon}<span class="dd-name">${esc(label)}</span><span class="count">${n}</span></button>`;
+  dd.innerHTML = item("all", "All " + a.label, base.length, iconURL("n", key) ? `<span class="sil-m ammo" aria-hidden="true">${ammoIcon(key)}</span>` : `<span class="sil-m all" aria-hidden="true"></span>`)
+    + a.archs.map(ar => item(ar, archName(ar), base.filter(w => w.arch === ar).length, `<span class="sil-m" style="--sil:url('${iconURL("a", ar)}')" aria-hidden="true"></span>`)).join("");
+  dd.style.setProperty("--ammo", `var(--ammo-${key})`);
+  dd.hidden = false; ddFor = key;
+  document.querySelectorAll(".ammo-tab[data-dd]").forEach(b => b.setAttribute("aria-expanded", b === tab ? "true" : "false"));
+  const bar = dd.parentElement.getBoundingClientRect(), r = tab.getBoundingClientRect();
+  const w = dd.offsetWidth, maxLeft = document.documentElement.clientWidth - bar.left - w - 12;
+  dd.style.left = Math.max(8, Math.min(r.left - bar.left, maxLeft)) + "px";
+  dd.style.top = (r.bottom - bar.top) + "px";
+}
+function closeDD(){
+  clearTimeout(ddTimer); ddFor = null;
+  const dd = document.getElementById("ammoDD"); if(dd){ dd.hidden = true; dd.innerHTML = ""; }
+  document.querySelectorAll(".ammo-tab[data-dd]").forEach(b => b.setAttribute("aria-expanded", "false"));
+}
+const soonCloseDD = () => { clearTimeout(ddTimer); ddTimer = setTimeout(closeDD, 220); };
+document.addEventListener("pointerover", e => {
+  if(e.pointerType !== "mouse") return;
+  const tab = e.target.closest && e.target.closest(".ammo-tab[data-dd]");
+  if(tab){ if(ddFor !== tab.dataset.dd) openDD(tab); else clearTimeout(ddTimer); return; }
+  if(e.target.closest && e.target.closest("#ammoDD")) clearTimeout(ddTimer);
+});
+document.addEventListener("pointerout", e => {
+  if(e.pointerType !== "mouse" || !ddFor) return;
+  const from = e.target.closest && e.target.closest(".ammo-tab[data-dd], #ammoDD");
+  const to = e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest(".ammo-tab[data-dd], #ammoDD");
+  if(from && !to) soonCloseDD();
+});
+document.addEventListener("click", e => {   // a tap or click anywhere else closes the menu
+  if(ddFor && !(e.target.closest && e.target.closest(".ammo-tab[data-dd], #ammoDD"))) closeDD();
+}, true);
+document.addEventListener("keydown", e => {
+  const tab = e.target.closest && e.target.closest(".ammo-tab[data-dd]");
+  if(tab && e.key === "ArrowDown"){ e.preventDefault(); openDD(tab); const f = document.querySelector("#ammoDD .dd-item"); if(f) f.focus(); return; }
+  const inDD = e.target.closest && e.target.closest("#ammoDD");
+  if(inDD && (e.key === "ArrowDown" || e.key === "ArrowUp")){
+    e.preventDefault(); const items = [...inDD.querySelectorAll(".dd-item")], i = items.indexOf(document.activeElement);
+    const n = items[(i + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length]; if(n) n.focus(); return; }
+  if(ddFor && (e.key === "Escape" || e.key === "Tab")){ const t2 = document.querySelector(`.ammo-tab[data-dd="${ddFor}"]`); closeDD(); if(e.key === "Escape" && t2) t2.focus(); }
+});
+addEventListener("resize", () => { if(ddFor) closeDD(); });
 
 try{ PHONE.addEventListener("change", () => render()); }catch(err){}
 function fromHash(){ const h = location.hash.replace("#",""); if(["weapons","armor","vault"].includes(h)) S.view = h; render(); }
