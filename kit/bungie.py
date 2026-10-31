@@ -46,6 +46,7 @@ items = comp("DestinyInventoryItemDefinition"); plugsets = comp("DestinyPlugSetD
 sets = comp("DestinyEquipableItemSetDefinition"); sperks = comp("DestinySandboxPerkDefinition")
 dmg = comp("DestinyDamageTypeDefinition"); brk = comp("DestinyBreakerTypeDefinition")
 nodes = comp("DestinyPresentationNodeDefinition"); vendors = comp("DestinyVendorDefinition"); loadicons = comp("DestinyLoadoutIconDefinition")
+records = comp("DestinyRecordDefinition")
 
 data = json.load(open(DATA)); icons = json.load(open(ICONS)); ticons = json.load(open(TICONS)); elems = json.load(open(ELEMS))
 nn = lambda s: re.sub(r"[^a-z0-9]", "", (s or "").lower().replace("’", "'"))
@@ -152,7 +153,11 @@ HEADER_ART = {"primary": ["/img/destiny_content/ammo_types/primary.png", ("node"
               "other":   [("vendor", 672118013, "smallTransparentIcon")],     # Banshee-44's bullet; the app tints it gold
               "weapons": [("node", 1528930164, "icon")],
               "armor":   [("node", 1605042242, "icon")],
-              "vault":   [("vendor", 1037843411, "smallTransparentIcon"), ("vendor", 1037843411, "icon")]}
+              "vault":   [("vendor", 1037843411, "smallTransparentIcon"), ("vendor", 1037843411, "icon")],
+              # class symbols for the Hunter / Titan / Warlock switch (triumph art; the Collections class nodes are the fallback)
+              "hunter":  [("record", 1123588991, "icon"), ("node", 3745240322, "icon")],
+              "titan":   [("record", 3139610115, "icon"), ("node", 811225638, "icon")],
+              "warlock": [("record", 401164180, "icon"), ("node", 1269917845, "icon")]}
 headplan = {}
 for k, opts in HEADER_ART.items():
     paths = []
@@ -160,7 +165,7 @@ for k, opts in HEADER_ART.items():
         if isinstance(o, str): paths.append(o)
         else:
             if o[0] == "loadout": ic = loadicons.get(str(o[1]), {}).get(o[2])
-            else: ic = (nodes if o[0] == "node" else vendors).get(str(o[1]), {}).get("displayProperties", {}).get(o[2])
+            else: ic = {"node": nodes, "vendor": vendors, "record": records}[o[0]].get(str(o[1]), {}).get("displayProperties", {}).get(o[2])
             if ic: paths.append(ic)
     if paths: headplan[k] = paths; need.update(paths)
     else: report["header icon missing"].append(k)
@@ -171,6 +176,10 @@ need.update(v for v in DMG.values() if v); need.update(v for v in BRKI.values() 
 SETS = {nn(s["displayProperties"]["name"]).removesuffix("set"): s for s in sets.values()}
 ALIAS = {"uncageddeviants": "waywardpsyche"}   # the sheet's name for Bungie's "Wayward Psyche Set"
 setplan = {}
+bdesc = {}   # Bungie's own wording for each set bonus, shown when hovering a bonus icon
+PIECE_SLOT = {3448274439: "head", 3551918588: "arms", 14239492: "chest", 20886954: "legs", 1585787867: "class"}
+PIECE_CLASS = {0: "titan", 1: "hunter", 2: "warlock"}
+pieceplan = {}
 for s in data["sets"]:
     k = nn(s["name"]); bs = SETS.get(ALIAS.get(k, k))
     if not bs: report["armor set not on Bungie"].append(s["name"]); continue
@@ -178,7 +187,15 @@ for s in data["sets"]:
     for p in bs.get("setPerks", []):
         sp = sperks.get(str(p["sandboxPerkHash"]), {}).get("displayProperties", {})
         if sp.get("icon"): bon[p["requiredSetCount"]] = sp["icon"]; need.add(sp["icon"])
+        if (sp.get("description") or "").strip(): bdesc.setdefault(s["id"], {})[p["requiredSetCount"]] = (sp.get("name") or "", sp["description"].strip())
     setplan[s["id"]] = bon
+    # the set's own armor pieces, one per slot for each class, with the season watermark like the weapons
+    for h in bs.get("setItems", []):
+        it = items.get(str(h)); slot = PIECE_SLOT.get(((it or {}).get("inventory") or {}).get("bucketTypeHash")); cls = PIECE_CLASS.get((it or {}).get("classType"))
+        if not (slot and cls and it["displayProperties"].get("icon")): continue
+        key = f'{s["id"]}|{slot}|{cls}'
+        if key not in pieceplan:
+            pieceplan[key] = (it["displayProperties"]["icon"], it.get("iconWatermark", "")); need.update(x for x in pieceplan[key] if x)
 
 def fetch(p):
     f = os.path.join(CACHE, "img", os.path.basename(p))
@@ -363,6 +380,16 @@ for k, paths in headplan.items():
         icons["n"][k] = uri(im, optimize=True); done["header icons"] += 1; break
     else: report["header icon download failed"].append(k)
 
+icons["p"] = {}
+for key, (ip, wp) in pieceplan.items():
+    im = load(ip)
+    if im is None: continue
+    im = im.resize((84, 84), Image.LANCZOS); wm = load(wp) if wp else None
+    if wm is not None: im.alpha_composite(wm.resize((84, 84), Image.LANCZOS))
+    icons["p"][key] = uri(im.convert("RGB"), "WEBP", quality=80, method=6); done["armor piece images"] += 1
+for s in data["sets"]:
+    if not any(k.startswith(s["id"] + "|") for k in icons["p"]): report["armor set without piece images"].append(s["name"])
+
 def vec(im):
     bg = Image.new("RGBA", im.size, (0, 0, 0, 255)); bg.alpha_composite(im)
     return np.asarray(bg.convert("L").resize((32, 32))).astype(float).ravel()
@@ -371,6 +398,8 @@ for s in data["sets"]:
     for b in s["bonuses"]:
         p = bon.get(b["pcs"]); k = gl(p) if p else None
         if k: b["bi"] = k; done["set bonus icons"] += 1
+        d = (bdesc.get(s["id"]) or {}).get(b["pcs"])
+        if d: b["bn"], b["bd"] = d; done["set bonus descriptions"] += 1
     # the set's own icon: whichever Bungie bonus icon the sheet's set icon looks like
     if bon:
         try:
@@ -396,7 +425,7 @@ lines = [f"Bungie manifest {ver}",
          f"weapon images {done['weapon images']}/{len(data['weapons'])}, frames {done['frames']}/{sum(1 for w in data['weapons'] if w['frame'])}, "
          f"perk slots {done['perk slots']}/{slots}, barrels {done['barrel icons']}/{sum(len(w['barrel']) for w in data['weapons'])}, "
          f"mags {done['mag icons']}/{sum(len(w['mag']) for w in data['weapons'])}, masterwork {done['masterwork icons']}, origin traits {done['origin traits']}, energy {done['energy icons']}/6, stun {done['stun icons']}/3, "
-         f"header icons {done['header icons']}/8, weapon type silhouettes {done['weapon type silhouettes']}/{sum(len(a) for a in data['ammo'].values())}, set icons {done['set icons']}/{len(data['sets'])}, set bonus icons {done['set bonus icons']}/{sum(len(s['bonuses']) for s in data['sets'])}"]
+         f"header icons {done['header icons']}/11, weapon type silhouettes {done['weapon type silhouettes']}/{sum(len(a) for a in data['ammo'].values())}, armor piece images {done['armor piece images']}/{len(data['sets']) * 15}, set icons {done['set icons']}/{len(data['sets'])}, set bonus icons {done['set bonus icons']}/{sum(len(s['bonuses']) for s in data['sets'])}, set bonus descriptions {done['set bonus descriptions']}/{sum(len(s['bonuses']) for s in data['sets'])}"]
 for k, v in report.items():
     lines.append(f"{k} ({len(set(v))}, these keep the sheet's icon): " + ", ".join(sorted(set(v))[:40]))
 open(os.path.join(OUT, "report.txt"), "w").write("\n".join(lines) + "\n")
