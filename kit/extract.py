@@ -2,7 +2,9 @@ import pdfplumber, hashlib, json, io, base64, re, sys
 from PIL import Image
 SRC = sys.argv[1]; OUT = sys.argv[2]
 pdf = pdfplumber.open(SRC)
-STUN = {'237789c3':'Barrier','c7ddf5c1':'Unstoppable','ffda4a4b':'Overload'}
+# Aegis's stun column icons, checked against Bungie's official breaker icons (DestinyBreakerTypeDefinition):
+# triangle = Shield Piercing (Barrier), square with stripes = Stagger (Unstoppable), split circle = Disruption (Overload)
+STUN = {'c7ddf5c1':'Barrier','237789c3':'Unstoppable','ffda4a4b':'Overload'}
 
 def img_uri(im, q=82):
     st = im['stream']; w, h = st.get('Width'), st.get('Height')
