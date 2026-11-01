@@ -1,6 +1,6 @@
 # Endgame API
 
-A Destiny 2 weapon and armor tracker built on **TheAegisRelic's** [Destiny 2: Endgame Analysis](https://docs.google.com/spreadsheets/d/1JM-0SlxVDAi-C6rGVlLxa-J1WGewEeL8Qvq4htWZHhY/edit) spreadsheet.
+A Destiny 2 weapon and armor tracker with a PvE mode built on **TheAegisRelic's** [Destiny 2: Endgame Analysis](https://docs.google.com/spreadsheets/d/1JM-0SlxVDAi-C6rGVlLxa-J1WGewEeL8Qvq4htWZHhY/edit) and a PvP mode built on **Pride Eternal / Finnald's** [Destiny 2 PvP Spreadsheet](https://docs.google.com/spreadsheets/d/1TVgtTRWNGEPi6OMlTLxXFSKUTi_ycwykhwuw8EW_jJ0/edit).
 
 **Live site:** https://jrskap35.github.io/endgame-api/
 
@@ -8,7 +8,7 @@ Made by SteelToe.
 
 ## Credit
 
-Every weapon tier, ranking, god roll perk, analysis note and armor set bonus rating in Endgame API comes from TheAegisRelic's Endgame Analysis. All credit for that work goes to him. Endgame API only reorganizes his sheet into a tracker.
+Every weapon tier, ranking, god roll perk, analysis note and armor set bonus rating in Endgame API comes from TheAegisRelic's Endgame Analysis. All credit for that work goes to him. PvP tiers, perks, notes, the Shopping List and PvP set bonus ratings come from Pride Eternal / Finnald's Destiny 2 PvP Spreadsheet, and all credit for that work goes to him. Endgame API only reorganizes their sheets into a tracker.
 
 Weapon images and the frame, barrel, magazine, masterwork, perk, origin trait, energy, stun and armor set icons come from Bungie's public Destiny 2 API.
 

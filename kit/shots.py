@@ -14,7 +14,9 @@ CACHE = sys.argv[3] if len(sys.argv) > 3 else "bungie_cache"
 os.makedirs(os.path.join(OUT, "shots"), exist_ok=True); os.makedirs(os.path.join(CACHE, "shots"), exist_ok=True)
 slug = lambda s: re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
 data = json.load(open(DATA))
-ws = [w for w in data["weapons"] if w.get("shot")]
+# both modes; a gun listed in both shares one image (bungie.py sets w["sh"] = [file, weapon id] to the first copy)
+allw = data["weapons"] + (data.get("pvp") or {}).get("weapons", [])
+ws = [w for w in allw if w.get("shot") and (not w.get("sh") or w["sh"][1] == w["id"])]
 
 def get(path):
     """download once per image (some weapons share artwork); write to a temp name so a cut off download never sticks"""
@@ -42,10 +44,10 @@ with ThreadPoolExecutor(12) as ex: done.update(ex.map(get, sorted({w["shot"][0] 
 shards, missing = {}, []
 for w in ws:
     u = first(w["shot"])   # falls back to older copies one by one when the newest has no art yet
-    if u: shards.setdefault(slug(w["arch"]), {})[w["id"]] = u
+    if u: shards.setdefault(w["sh"][0] if w.get("sh") else slug(w["arch"]), {})[w["id"]] = u
     else: missing.append(w["name"])
 total = 0
 for k, v in shards.items():
     p = os.path.join(OUT, "shots", k + ".json"); json.dump(v, open(p, "w"), separators=(",", ":")); total += os.path.getsize(p)
-print(f"full images {sum(len(v) for v in shards.values())}/{len(data['weapons'])} in {len(shards)} files, {total/1e6:.1f} MB"
+print(f"full images {sum(len(v) for v in shards.values())} unique (for {sum(1 for w in allw if w.get('shot'))} of {len(allw)} weapons) in {len(shards)} files, {total/1e6:.1f} MB"
       + (f"; failed: {', '.join(missing)}" if missing else ""))

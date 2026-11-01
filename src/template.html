@@ -15,7 +15,8 @@
   --fg:#ece8df; --muted:#a59f92; --faint:#706b61;
   --accent:#c9b277; --accent-dim:#655c39;
   --god:#3fdc86; --semi:#f3c64a; --look:#9cc6e4;
-  --ammo-primary:#ece8df; --ammo-special:#5ec46a; --ammo-heavy:#a971e6; --ammo-other:#d8b04c; --ammo-all:#e0453a;
+  --ammo-primary:#ece8df; --ammo-special:#5ec46a; --ammo-heavy:#a971e6; --ammo-other:#d8b04c; --ammo-all:#e0453a; --ammo-exotic:#e8c548;
+  --pve:#4a90e2; --pvp:#d8432f; --mode:var(--pve);
   --el-kinetic:#e8e8e8; --el-solar:#ff7f14; --el-arc:#65f3f7; --el-void:#c089d5; --el-stasis:#4f9aff; --el-strand:#00ec6c;
   --t-s:#57bb8a; --t-a:#a7c779; --t-b:#ffd666; --t-c:#f5b06b; --t-d:#e67c73; --t-e:#c27ba0; --t-f:#8e7cc3;
   --sh-weapon:#660000; --sh-info:#783f04; --sh-perks:#274e13; --sh-analysis:#20124d;
@@ -91,7 +92,7 @@ button{font:inherit;color:inherit}
 .fine{font-size:12.5px;color:var(--faint)!important}
 /* phone cards */
 .cards{display:grid;gap:8px}
-.wcard,.acard{border:1px solid var(--line-2);background:var(--veil);border-radius:3px;padding:10px;display:grid;gap:8px}
+.wcard,.acard{border:1px solid color-mix(in srgb,var(--mode) 55%,var(--line-2));background:var(--veil);border-radius:3px;padding:10px;display:grid;gap:8px}
 .wcard.open,.acard.open{background:rgba(201,178,119,.07)}
 .wc-top{display:grid;grid-template-columns:auto auto 1fr auto;align-items:center;gap:10px}
 .wc-top .thumb{width:44px;height:44px}
@@ -241,7 +242,21 @@ a.btn svg{width:14px;height:14px}
 .result{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:var(--faint);font-family:var(--font-mono);font-size:12px;letter-spacing:.06em;padding-block:14px 8px;text-transform:uppercase}
 
 /* tables */
-.table-wrap{position:relative;overflow-x:auto;border:1px solid var(--line-2);background:var(--veil);border-radius:2px}
+.table-wrap{position:relative;overflow-x:auto;border:2px solid var(--mode);background:var(--veil);border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.35),0 0 18px color-mix(in srgb,var(--mode) 18%,transparent)}
+:root[data-mode="pvp"]{--mode:var(--pvp)}
+.mode-seg{display:inline-flex;border:1px solid var(--line-2);border-radius:2px;overflow:hidden;flex:none}
+.mode-seg button{appearance:none;background:none;border:0;color:var(--muted);cursor:pointer;font-family:var(--font-display);font-weight:700;font-size:14px;letter-spacing:.12em;padding:6px 11px;display:inline-flex;align-items:center;gap:7px}
+.mode-seg button + button{border-left:1px solid var(--line-2)}
+.mode-seg button:hover{color:var(--fg)}
+.mode-seg button[aria-pressed="true"]{color:var(--fg);background:color-mix(in srgb,var(--mode) 22%,transparent);box-shadow:inset 0 -2px 0 var(--mode)}
+.mdot{width:8px;height:8px;border-radius:50%;flex:none}
+.mdot.pve{background:var(--pve)} .mdot.pvp{background:var(--pvp)}
+.shoptag{color:var(--accent);font-weight:600}
+.dmodes .modes{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.mode-r{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--muted);border:1px solid var(--line-2);border-radius:2px;padding:2px 7px}
+.mode-r b{font-size:12px}
+.mode-r.r-y b{color:var(--god)} .mode-r.r-n b{color:var(--t-d)} .mode-r.r-m b{color:var(--semi)} .mode-r.r-s b{color:var(--look)}
+.dshop b{font-size:13.5px;line-height:1.35}
 table{width:100%;border-collapse:separate;border-spacing:0}
 .wtable{min-width:1180px;table-layout:fixed}
 .wtable th{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;letter-spacing:.1em}
@@ -597,8 +612,17 @@ tr.detail.adetail td{padding-left:72px}
   .rolls,.target{grid-template-columns:1fr}
   .icon-btn span{display:none}
 }
+@media (max-width:440px){
+  .mode-seg button{font-size:12px;letter-spacing:.06em;padding:5px 7px;gap:5px}
+  .mdot{width:6px;height:6px}
+  .top-right{gap:6px}
+  .topbar-in:has(#modeSeg:not([hidden])) .brand{font-size:15px;letter-spacing:.06em;gap:7px}
+  .topbar-in:has(#modeSeg:not([hidden])) .sync{display:none}
+  .topbar-in:has(#modeSeg:not([hidden])) .icon-btn{padding:0 7px}
+}
 @media (max-width:380px){
   .brand{letter-spacing:.05em;gap:6px}
+  .mode-seg .mdot{display:none}
 }
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
@@ -621,6 +645,10 @@ tr.detail.adetail td{padding-left:72px}
       <button type="button" data-act="nav" data-view="vault"><img class="nav-ico" data-n="vault" alt="" hidden>Vault <span class="count" id="navCount"></span></button>
     </nav>
     <div class="top-right">
+      <div class="mode-seg" role="group" aria-label="Game mode" id="modeSeg" hidden>
+        <button type="button" data-act="mode" data-k="pve" title="PvE: TheAegisRelic's Endgame Analysis"><span class="mdot pve"></span>PvE</button>
+        <button type="button" data-act="mode" data-k="pvp" title="PvP: Pride Eternal / Finnald's PvP Spreadsheet"><span class="mdot pvp"></span>PvP</button>
+      </div>
       <span class="sync" id="sync" role="status"><span class="dot"></span><span class="label">Loading</span></span>
       <button type="button" class="icon-btn acct" id="acct" data-act="acct" aria-haspopup="menu" hidden><span class="acct-av" aria-hidden="true"></span><span class="acct-l">Sign in</span></button>
       <button type="button" class="icon-btn" id="soundBtn" data-act="sound" aria-haspopup="true" aria-label="God roll sound volume">
@@ -657,18 +685,19 @@ const ICON_SRC = JSON.parse(document.getElementById("vault-icons").textContent);
 ICON_SRC.t = JSON.parse(document.getElementById("vault-trait-icons").textContent);
 ICON_SRC.e = JSON.parse(document.getElementById("vault-elements").textContent);
 document.documentElement.style.setProperty("--bgimg", 'url("__BG__")');
-const AMMO = [
-  {key:"primary", label:"Primary"},
-  {key:"special", label:"Secondary"},
-  {key:"heavy",   label:"Heavy"},
-  {key:"other",   label:"Other"}
-].map(a => ({...a, archs:D.ammo[a.key]}));
-const AMMO_TABS = [{key:"all", label:"All Weapons", archs:AMMO.flatMap(a => a.archs)}, ...AMMO];
-const AMMO_OF_ARCH = Object.fromEntries(AMMO.flatMap(a => a.archs.map(x => [x, a.key])));
-const WEAPONS = D.weapons;
+/* ---- two modes: PvE (TheAegisRelic's Endgame Analysis) and PvP (Pride Eternal / Finnald's PvP Spreadsheet).
+   Same layout; applyMode() swaps the weapon list, sections and armor ratings. PvP weapon ids start with "pvp-",
+   so both modes' marks live side by side in one saved progress; armor pieces are the same items in both modes. ---- */
+const AMMO_BASE = [{key:"primary", label:"Primary"},{key:"special", label:"Secondary"},{key:"heavy", label:"Heavy"},{key:"other", label:"Other"}];
+const PVED = {weapons:D.weapons, sets:D.sets, ammo:D.ammo};
+const PVPD = D.pvp ? (() => { const by = Object.fromEntries(D.pvp.sets.map(s => [s.id, s]));
+  return {weapons:D.pvp.weapons, ammo:D.pvp.ammo, sets:D.sets.map(s => ({...s, bonuses:(by[s.id] || {bonuses:[]}).bonuses}))}; })() : null;
+let AMMO, AMMO_TABS, AMMO_OF_ARCH, WEAPONS, SETS, SETBY, AMMO_LABEL, SET_TAGS, ARCH_ORDER, SORT_FIELDS, FILTER_FIELDS, MODE = "pve";
+const isPvp = () => MODE === "pvp";
 // activities: split combined sources ("Xur, Dares") and tidy spelling variants from the sheet
 const ACT_FIX = {"Cosmodrom e":"Cosmodrome","NODE. OVRD. AVALON":"NODE.OVRD. AVALON","Kell's Fall?":"Kell's Fall","?":"Unknown","":"Unknown"};
-WEAPONS.forEach(w => { w.acts = [...new Set(w.source.split(",").map(x => x.trim()).map(x => ACT_FIX[x] ?? x))]; });
+const ALL_WEAPONS = D.weapons.concat(PVPD ? PVPD.weapons : []);
+ALL_WEAPONS.forEach(w => { w.acts = [...new Set(String(w.source || "").split(",").map(x => x.trim()).map(x => ACT_FIX[x] ?? x))]; });
 const ACT_GROUPS = [
   ["Raids", ["Crota's End","Deep Stone Crypt","Desert Perpetual","Epic Desert Perpetual","Garden of Salvation","King's Fall","Last Wish","Root of Nightmares","Salvation's Edge","Vault of Glass","Vow of the Disciple"]],
   ["Dungeons", ["Duality","Ghosts of the Deep","Grasp of Avarice","Pit of Heresy","Prophecy","Shattered Throne","Spire of the Watcher","Sundered Doctrine","Vesper's Host","Warlord's Ruin"]],
@@ -678,15 +707,12 @@ const ACT_GROUPS = [
   ["Destinations", ["World","EDZ","Cosmodrome","Europa","Moon","Nessus","Neomuna","Throne World","Pale Heart","Dreaming City","Kepler"]]
 ];
 const ACT_GROUP_OF = Object.fromEntries(ACT_GROUPS.flatMap(([g, xs]) => xs.map(x => [x, g])));
-const ALL_ACTS = [...new Set(WEAPONS.flatMap(w => w.acts))];
 function groupActs(acts){
   const out = ACT_GROUPS.map(([g, xs]) => [g, xs.filter(x => acts.includes(x))]);
   out.push(["Seasonal & other", acts.filter(x => !ACT_GROUP_OF[x]).sort((a,b) => a === "Unknown" ? 1 : b === "Unknown" ? -1 : a.localeCompare(b))]);
   return out.filter(([, xs]) => xs.length);
 }
-const BYID = Object.fromEntries(WEAPONS.map(w => [w.id, w]));
-const SETS = D.sets;
-const SETBY = Object.fromEntries(SETS.map(s => [s.id, s]));
+const BYID = Object.fromEntries(ALL_WEAPONS.map(w => [w.id, w]));
 const NOTES = D.notes;
 const STUN = D.stun;
 const PIECES = [["head","Head"],["arms","Arms"],["chest","Chest"],["legs","Legs"],["class","Class Item"]];
@@ -700,9 +726,24 @@ const statPrimary = k => k.split("-")[0];
 const STATNAME = Object.fromEntries(STATS);
 const TIER_ORDER = {S:0,A:1,B:2,C:3,D:4,E:5,F:6};
 const tierVar = t => `var(--t-${String(t).toLowerCase()})`;
-const SORT_FIELDS = [["name","Name"],["element","Energy"],["frame","Frame"],["source","Source"],["stun","Stun"],["p1","Perk 1"],["p2","Perk 2"],["origin","Origin Trait"],["tier","Tier"]];
-const FILTER_FIELDS = [["act","Activity"],["a","Ammo Type"],["element","Energy"],["stun","Stun Type"],["tier","Tier"],["frame","Frame"],["season","Season"]];
-const AMMO_LABEL = Object.fromEntries(AMMO.map(a => [a.key, a.label]));
+const SORT_ALL = [["name","Name"],["element","Energy"],["frame","Frame"],["source","Source"],["stun","Stun"],["p1","Perk 1"],["p2","Perk 2"],["origin","Origin Trait"],["tier","Tier"]];
+const FILTER_ALL = [["act","Activity"],["a","Ammo Type"],["element","Energy"],["stun","Stun Type"],["tier","Tier"],["frame","Frame"],["season","Season"]];
+function applyMode(m){
+  MODE = m === "pvp" && PVPD ? "pvp" : "pve";
+  const src = MODE === "pvp" ? PVPD : PVED;
+  AMMO = AMMO_BASE.concat(MODE === "pvp" ? [{key:"exotic", label:"Exotic"}] : []).map(a => ({...a, archs:src.ammo[a.key] || []})).filter(a => a.archs.length);
+  AMMO_TABS = [{key:"all", label:"All Weapons", archs:[...new Set(AMMO.flatMap(a => a.archs))]}, ...AMMO];
+  AMMO_OF_ARCH = Object.fromEntries(AMMO.filter(a => a.key !== "exotic").flatMap(a => a.archs.map(x => [x, a.key])));
+  WEAPONS = src.weapons; SETS = src.sets; SETBY = Object.fromEntries(SETS.map(s => [s.id, s]));
+  AMMO_LABEL = Object.fromEntries(AMMO.map(a => [a.key, a.label]));
+  SET_TAGS = [...new Set(SETS.flatMap(s => s.bonuses.flatMap(b => b.tags)))].sort();
+  ARCH_ORDER = Object.fromEntries(AMMO_BASE.flatMap(a => PVED.ammo[a.key] || []).map((x,i) => [x,i]));
+  // stun types are a PvE (champion) mechanic, so PvP leaves them out
+  SORT_FIELDS = SORT_ALL.filter(([k]) => MODE === "pve" || k !== "stun");
+  FILTER_FIELDS = FILTER_ALL.filter(([k]) => MODE === "pve" || k !== "stun");
+  document.documentElement.dataset.mode = MODE;
+}
+applyMode("pve");
 // full weapon type names for the sheet's section shorthand (the shorthand stays the data key, so saved progress is untouched)
 const ARCH_NAME = {Autos:"Auto Rifles", HCs:"Hand Cannons", Pulses:"Pulse Rifles", Scouts:"Scout Rifles", SMGs:"Submachine Guns",
   BGLs:"Breech Grenade Launchers", Fusions:"Fusion Rifles", Snipers:"Sniper Rifles", Traces:"Trace Rifles",
@@ -713,8 +754,7 @@ function sil(ar){ const u = iconURL("a", ar); return u ? `<span class="sil" styl
 const fieldVals = (w, f) => f === "act" ? w.acts : [w[f]];
 const MLABEL = {god:"God Roll",semi:"Semi-God Roll",looking:"Looking for"};
 const ammoNum = w => { const s = w.stats[0]; const n = s ? parseFloat(s[1]) : NaN; return isNaN(n) ? -1 : n; };
-WEAPONS.forEach(w => { w.ammo = ammoNum(w); });
-const SET_TAGS = [...new Set(SETS.flatMap(s => s.bonuses.flatMap(b => b.tags)))].sort();
+ALL_WEAPONS.forEach(w => { w.ammo = ammoNum(w); });
 
 // decode icons into blob URLs once, on demand
 const iconCache = {};
@@ -773,6 +813,7 @@ let armorLook = cached.armorLook || {};
 // which class's armor art the Armor page shows (Hunter, Titan or Warlock); saved with each person's progress
 const CLASSES = [["hunter","Hunter"],["titan","Titan"],["warlock","Warlock"]];
 let armorCls = CLASSES.some(c => c[0] === cached.cls) ? cached.cls : "hunter";
+let savedMode = cached.mode === "pvp" && PVPD ? "pvp" : "pve";
 const SOUND_URL = (() => { try{ return JSON.parse(document.getElementById("vault-sound").textContent); }catch(e){ return null; } })();
 const LVOL = "vault.volume.v1";
 const VOL = Object.assign({v:0.8, m:false}, local.get(LVOL, {}));
@@ -785,6 +826,14 @@ const S = {
   aq:"", aStat:"all", aTags:[], aSort:"sheet", vaq:"",
   open:{}, menuFor:null, edit:null
 };
+applyMode(savedMode);
+// after a mode change, drop choices the other mode doesn't have (the Exotic tab, Stun filters and sorts)
+function fixScope(){
+  if(!AMMO_TABS.some(a => a.key === S.ammo)){ S.ammo = "all"; S.arch = "all"; }
+  if(S.arch !== "all" && !(AMMO_TABS.find(a => a.key === S.ammo) || {archs:[]}).archs.includes(S.arch)) S.arch = "all";
+  if(!isPvp()) return;
+  delete S.filters.stun; S.sorts = S.sorts.filter(x => x.key !== "stun");
+}
 
 let docRef = null, soundRef = null, sync = "loading";
 function setSync(s){
@@ -801,14 +850,14 @@ function setSync(s){
 }
 let writing = false, writeAgain = false;
 async function persist(){
-  local.set(LKEY, {marks, armor, armorLook, cls:armorCls});
+  local.set(LKEY, {marks, armor, armorLook, cls:armorCls, mode:MODE});
   if(!docRef){ return; }
   if(writing){ writeAgain = true; return; }
   writing = true; setSync("saving");
   try{
     do{
       writeAgain = false;
-      const body = {v:1, marks, armor, armorLook, cls:armorCls};
+      const body = {v:1, marks, armor, armorLook, cls:armorCls, mode:MODE};
       try{ await docRef.set(body); }
       catch(e){
         if(e && e.code === "unavailable"){ await new Promise(r => setTimeout(r, 600 + Math.random()*600)); await docRef.set(body); }
@@ -840,7 +889,8 @@ function attachStore(ref, sref){
     armor = JSON.parse(JSON.stringify(data.armor || {}));
     armorLook = JSON.parse(JSON.stringify(data.armorLook || {}));
     if(CLASSES.some(c => c[0] === data.cls)) armorCls = data.cls;
-    local.set(LKEY, {marks, armor, armorLook, cls:armorCls});
+    if((data.mode === "pvp" || data.mode === "pve") && data.mode !== MODE){ applyMode(data.mode); fixScope(); }
+    local.set(LKEY, {marks, armor, armorLook, cls:armorCls, mode:MODE});
     setSync("saved");
     if(overlay.hidden && menu.hidden) render();
   }, () => { docRef = null; setSync(FB_CONFIG ? "error" : "local"); });
@@ -944,8 +994,9 @@ const fn = n => n ? `<sup class="fn" title="${esc(NOTES[n] || "")}">[${n}]</sup>
 function lines(arr){ return `<div class="lines">${arr.map(x => Array.isArray(x) ? `<s title="Struck on the sheet">${esc(x[0])}</s>` : `<span>${esc(x)}</span>`).join("")}</div>`; }
 function thumb(w, big){
   const m = marks[w.id] || "";
-  if(big) return `<div class="thumb ${m} big" data-thumb="${w.id}"><img src="${iconURL("w", w.id)}" alt="" decoding="async"></div>`;
-  return `<button type="button" class="thumb ${m}" data-thumb="${w.id}" data-act="shot" data-id="${w.id}" aria-label="View the full image of ${esc(w.name)}" title="View full image"><img src="${iconURL("w", w.id)}" alt="" decoding="async"></button>`;
+  const img = iconURL("w", w.wi || w.id);
+  if(big) return `<div class="thumb ${m} big" data-thumb="${w.id}"><img src="${img}" alt="" decoding="async"></div>`;
+  return `<button type="button" class="thumb ${m}" data-thumb="${w.id}" data-act="shot" data-id="${w.id}" aria-label="View the full image of ${esc(w.name)}" title="View full image"><img src="${img}" alt="" decoding="async"></button>`;
 }
 const perkName = x => Array.isArray(x) ? x[0] : x;
 function ico(kind, id, label, cls){
@@ -984,9 +1035,13 @@ function detailPanel(w){
       ${dBox("Origin Trait", origin)}
     </div>
     <div class="dmeta">
-      <div class="dstat"><h4>${esc(statLabel)}</h4>${statsCell(w)}</div>
-      <div class="dstat"><h4>Season</h4><b>S${esc(w.season)}</b></div>
-      <div class="dstat"><h4>Upgrade</h4><b class="up ${w.up==="Yes"?"yes":""}">${w.up==="Yes"?"⬆ ":""}${esc(w.up)}</b></div>
+      ${w.stats.length ? `<div class="dstat"><h4>${esc(statLabel)}</h4>${statsCell(w)}</div>` : ""}
+      ${w.season ? `<div class="dstat"><h4>Season</h4><b>S${esc(w.season)}</b></div>` : ""}
+      ${w.id.startsWith("pvp-")
+        ? (w.craft ? `<div class="dstat"><h4>Craftable</h4><b class="up ${w.craft==="Yes"?"yes":""}">${esc(w.craft)}</b></div>` : "")
+        : `<div class="dstat"><h4>Upgrade</h4><b class="up ${w.up==="Yes"?"yes":""}">${w.up==="Yes"?"⬆ ":""}${esc(w.up)}</b></div>`}
+      ${w.modes && Object.keys(w.modes).length ? `<div class="dstat dmodes"><h4>Playlists</h4><div class="modes">${Object.entries(w.modes).map(([k,v]) => `<span class="mode-r r-${{"✔":"y","✖":"n","▲":"m","!":"s"}[v]||"o"}" title="${esc(k)}: ${esc({"✔":"Optimal","✖":"Not recommended","▲":"Viable","!":"Situational"}[v]||v)}"><b>${esc(v)}</b>${esc(k)}</span>`).join("")}</div></div>` : ""}
+      ${w.shop ? `<div class="dstat dshop"><h4>Shopping List${w.shop.priority?` · ${esc(w.shop.priority)}`:""}</h4><b>${esc(w.shop.role)}</b></div>` : ""}
       <div class="dnotes"><h4>Notes</h4><p>${esc(w.notes) || '<span class="dim">No notes</span>'}</p>${notes.map(n => `<div class="foot">[${n}] ${esc(NOTES[n]||"")}</div>`).join("")}</div>
     </div>
   </div>`;
@@ -1013,6 +1068,8 @@ function tierCell(t, rank){ return `<div class="tier-cell"><span class="tier" st
 /* ================= RENDER ================= */
 function render(){
   document.querySelectorAll(".nav button").forEach(b => b.setAttribute("aria-current", b.dataset.view === S.view ? "page" : "false"));
+  const ms = document.getElementById("modeSeg");
+  if(ms){ ms.hidden = !PVPD; ms.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.dataset.k === MODE)); }
   const got = WEAPONS.filter(w => isObtained(marks[w.id])).length;
   $("#navCount").textContent = got ? got : "";
   let html = "";
@@ -1100,7 +1157,6 @@ const flat = a => a.map(x => Array.isArray(x) ? x[0] : x).join(" ");
 function matchesQuery(w, q){
   return (w.name + " " + w.var + " " + w.arch + " " + archName(w.arch) + " " + flat(w.p1) + " " + flat(w.p2) + " " + w.origin + " " + flat(w.barrel) + " " + flat(w.mag)).toLowerCase().includes(q);
 }
-const ARCH_ORDER = Object.fromEntries(AMMO.flatMap(a => a.archs).map((x,i) => [x,i]));
 function sortList(list){
   return list.slice().sort((a,b) => {
     for(const s of S.sorts){
@@ -1112,7 +1168,7 @@ function sortList(list){
       else c = String(a[s.key]).localeCompare(String(b[s.key]));
       if(c) return c * s.dir;
     }
-    return (ARCH_ORDER[a.arch] - ARCH_ORDER[b.arch]) || a.rank - b.rank;
+    return ((a.a === "exotic") - (b.a === "exotic")) || (ARCH_ORDER[a.arch] - ARCH_ORDER[b.arch]) || a.rank - b.rank;
   });
 }
 function weaponList(mode){
@@ -1141,13 +1197,13 @@ function weaponList(mode){
     const m = marks[w.id], open = !!S.open[w.id];
     const rowsN = Math.max(w.p1.length, w.p2.length, 1);
     const statusBtn = `<button type="button" class="status-btn ${m?"s-"+m:""}" data-act="status" data-id="${w.id}" aria-haspopup="menu" aria-label="Mark ${esc(w.name)}${m?" (currently "+MLABEL[m]+")":""}">${m ? I[m] : I.plus}</button>`;
-    const nameBlock = `<div class="nm"><div class="nm-txt"><button type="button" class="name-btn" data-act="open" data-id="${w.id}" aria-expanded="${open}"><span class="wname">${esc(w.name)}</span></button>${w.var?`<div class="variant">${esc(w.var)}</div>`:""}<div class="wsub">${showArch?esc(archName(w.arch))+" · ":""}S${esc(w.season)}${m?` · <span class="mtag mt-${m}">${MLABEL[m]}</span>`:""}</div></div><button type="button" class="expand" data-act="open" data-id="${w.id}" aria-label="${open?"Hide":"Show"} details for ${esc(w.name)}">${I.chev}</button></div>`;
+    const nameBlock = `<div class="nm"><div class="nm-txt"><button type="button" class="name-btn" data-act="open" data-id="${w.id}" aria-expanded="${open}"><span class="wname">${esc(w.name)}</span></button>${w.var?`<div class="variant">${esc(w.var)}</div>`:""}<div class="wsub">${[showArch?esc(archName(w.arch)):"", w.season?`S${esc(w.season)}`:"", w.shop?`<span class="shoptag" title="Shopping List pick: ${esc(w.shop.role)}${w.shop.priority?` (${esc(w.shop.priority)} priority)`:""}">Shopping List</span>`:"", m?`<span class="mtag mt-${m}">${MLABEL[m]}</span>`:""].filter(Boolean).join(" · ")}</div></div><button type="button" class="expand" data-act="open" data-id="${w.id}" aria-label="${open?"Hide":"Show"} details for ${esc(w.name)}">${I.chev}</button></div>`;
     const notes = open ? [w.frameNote, ...w.stats.map(s => s[3])].filter(Boolean) : [];
     const detailGrid = open ? detailPanel(w) : "";
     if(PHONE.matches){
       return `<article class="wcard ${open?"open":""}">
-        <div class="wc-top">${statusBtn}${thumb(w)}<div class="wc-name">${nameBlock}</div>${tierCell(w.tier, w.rank)}</div>
-        <div class="wc-info">${elemCell(w.element)}${frameCell(w)}${stunImg(w.stun)}${originCell(w)}<span class="wc-src">${w.srcX?`<s>${esc(w.source)}</s>`:esc(w.source)}</span></div>
+        <div class="wc-top">${statusBtn}${thumb(w)}<div class="wc-name">${nameBlock}</div>${tierCell(w.tier, isPvp() ? null : w.rank)}</div>
+        <div class="wc-info">${elemCell(w.element)}${frameCell(w)}${isPvp() ? "" : stunImg(w.stun)}${originCell(w)}<span class="wc-src">${w.srcX?`<s>${esc(w.source)}</s>`:esc(w.source)}</span></div>
         <div class="wc-perks"><div class="wc-h">Perk 1</div><div class="wc-h">Perk 2</div>${perkNamed(w, w.p1, rowsN)}${perkNamed(w, w.p2, rowsN)}</div>
         ${detailGrid}</article>`;
     }
@@ -1158,20 +1214,21 @@ function weaponList(mode){
       <td class="c-ico">${elemCell(w.element)}</td>
       <td class="c-ico">${frameCell(w)}</td>
       <td class="c-src">${w.srcX?`<s title="Struck on the sheet">${esc(w.source)}</s>`:esc(w.source)}</td>
-      <td class="c-ico">${stunImg(w.stun)}</td>
+      ${isPvp() ? "" : `<td class="c-ico">${stunImg(w.stun)}</td>`}
       <td class="c-perk">${perkCol(w, w.p1, rowsN)}</td>
       <td class="c-perk">${perkCol(w, w.p2, rowsN)}</td>
       <td class="c-ico">${originCell(w)}</td>
-      <td class="c-tier">${tierCell(w.tier, w.rank)}</td>
+      <td class="c-tier">${tierCell(w.tier, isPvp() ? null : w.rank)}</td>
     </tr>`;
     if(!open) return row;
-    return row + `<tr class="detail"><td colspan="11">${detailGrid}</td></tr>`;
+    return row + `<tr class="detail"><td colspan="${isPvp() ? 10 : 11}">${detailGrid}</td></tr>`;
   }).join("");
   if(PHONE.matches) return head + `<div class="cards">${rows}</div>`;
-  const cols = [4,7,21,6.5,6.5,15,6.5,8,8,9,8.5].map(w => `<col style="width:${w}%">`).join("");
+  const pvp = isPvp();
+  const cols = (pvp ? [4,7,22,7,7,17,8.5,8.5,9.5,9.5] : [4,7,21,6.5,6.5,15,6.5,8,8,9,8.5]).map(w => `<col style="width:${w}%">`).join("");
   return head + `<div class="table-wrap"><table class="wtable"><colgroup>${cols}</colgroup><thead>
-    <tr class="bands"><th colspan="3" class="b-weapon">WEAPON</th><th colspan="4" class="b-info">INFO</th><th colspan="3" class="b-perks">PERKS</th><th class="b-analysis">GRADE</th></tr>
-    <tr><th><span class="sr">Status</span></th><th><span class="sr">Icon</span></th>${th("name","Name")}${th("element","Energy")}${th("frame","Frame")}${th("source","Source")}${th("stun","Stun")}${th("p1","Perk 1")}${th("p2","Perk 2")}${th("origin","Origin Trait")}${th("tier","Tier")}</tr></thead><tbody>${rows}</tbody></table></div>`;
+    <tr class="bands"><th colspan="3" class="b-weapon">WEAPON</th><th colspan="${pvp ? 3 : 4}" class="b-info">INFO</th><th colspan="3" class="b-perks">PERKS</th><th class="b-analysis">GRADE</th></tr>
+    <tr><th><span class="sr">Status</span></th><th><span class="sr">Icon</span></th>${th("name","Name")}${th("element","Energy")}${th("frame","Frame")}${th("source","Source")}${pvp ? "" : th("stun","Stun")}${th("p1","Perk 1")}${th("p2","Perk 2")}${th("origin","Origin Trait")}${th("tier","Tier")}</tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 /* ---------- armor ---------- */
@@ -1341,9 +1398,9 @@ function shotSrc(w){
   const paths = Array.isArray(w.shot) ? w.shot : w.shot ? [w.shot] : [];
   if(!paths.length) return Promise.reject(new Error("no image"));
   if(FB_CONFIG) return loadImg(paths.map(p => "https://www.bungie.net" + p));
-  const k = archSlug(w.arch);
+  const [k, sid] = w.sh || [archSlug(w.arch), w.id];
   if(!SHOT_SHARDS[k]) SHOT_SHARDS[k] = fetch(`shots/${k}.json`).then(r => r.ok ? r.json() : Promise.reject(new Error(r.status))).catch(e => { delete SHOT_SHARDS[k]; throw e; });
-  return SHOT_SHARDS[k].then(m => m[w.id] ? loadImg([m[w.id]]) : Promise.reject(new Error("no image")));
+  return SHOT_SHARDS[k].then(m => m[sid] ? loadImg([m[sid]]) : Promise.reject(new Error("no image")));
 }
 function shotModal(id){
   const w = BYID[id]; if(!w) return;
@@ -1352,7 +1409,7 @@ function shotModal(id){
   if(overlay.hidden) lastFocus = document.activeElement;
   overlay.classList.add("shotlay");
   overlay.innerHTML = `<div class="shotpop" role="dialog" aria-modal="true" aria-label="${esc(w.name)}" data-shot="${id}">
-    <div class="shotframe ${m}" data-act="noop"><div class="ph loading"><img src="${iconURL("w", id)}" alt=""><span>Loading image</span></div></div>
+    <div class="shotframe ${m}" data-act="noop"><div class="ph loading"><img src="${iconURL("w", w.wi || id)}" alt=""><span>Loading image</span></div></div>
     <div class="shotcap" data-act="noop"><div><div class="nm2">${esc(w.name)}</div><div class="sub">${esc(archName(w.arch))} · ${esc(w.element)} · S${esc(w.season)} · Tier ${esc(w.tier)}${status?` · <b class="${m}">${status}</b>`:""}</div></div>
       <button type="button" class="close" data-act="modal-close" aria-label="Close" data-autofocus>${I.clear}</button></div>
   </div>`;
@@ -1407,12 +1464,21 @@ function infoModal(){
         <div class="sheet">Destiny 2: Endgame Analysis</div>
         <div class="by">by <b>TheAegisRelic</b></div>
         <ul>
-          <li>Weapon tiers, rankings and god roll perks</li>
+          <li>PvE weapon tiers, rankings and god roll perks</li>
           <li>Analysis notes for every weapon</li>
           <li>Armor set bonuses and their ratings</li>
         </ul>
       </div>
-      <p>Endgame API checks his sheet every week, so the tiers and rolls here always follow his latest analysis. All credit for that work goes to him.</p>
+      <div class="credit">
+        <div class="sheet">Destiny 2 PvP Spreadsheet</div>
+        <div class="by">by <b>Pride Eternal / Finnald</b></div>
+        <ul>
+          <li>PvP weapon and exotic tiers, perks and notes</li>
+          <li>The Shopping List of priority picks</li>
+          <li>PvP armor set bonus ratings</li>
+        </ul>
+      </div>
+      <p>Endgame API checks both sheets every week, so the tiers and rolls here always follow their latest analysis. All credit for that work goes to them.</p>
       <div class="maker">Endgame API made by <b>SteelToe</b></div>
       <p class="fine">Weapon, perk, frame, armor set, energy and stun icons come straight from Bungie's Destiny 2 API and refresh with the weekly update. Fan made and not affiliated with Bungie. Destiny 2 and its icons and artwork belong to Bungie.</p>
     </div>
@@ -1551,6 +1617,7 @@ document.addEventListener("click", e => {
     case "stat": if(t.dataset.mode === "vault") S.vStat = k; else S.wStat = k; render(); return;
     case "astat": S.aStat = k; render(); return;
     case "asort": S.aSort = k; render(); return;
+    case "mode": if(k !== MODE){ applyMode(k); fixScope(); S.open = {}; persist(); render(); scrollTo({top:0}); } return;
     case "acls": if(armorCls !== k){ armorCls = k; persist(); render(); } return;
     case "atag": S.aTags = S.aTags.includes(k) ? S.aTags.filter(x => x !== k) : S.aTags.concat(k); render(); return;
     case "atag-clear": S.aTags = []; render(); return;

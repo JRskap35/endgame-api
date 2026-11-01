@@ -32,7 +32,7 @@ jobs:
           path: build/bungie_cache
           key: bungie-${{ github.run_id }}
           restore-keys: bungie-
-      - name: Rebuild from TheAegisRelic's sheet and Bungie's API
+      - name: Rebuild from TheAegisRelic's and Pride Eternal's sheets and Bungie's API
         env:
           SITE_URL: https://jrskap35.github.io/endgame-api/
         run: bash kit/build.sh

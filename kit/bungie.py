@@ -53,7 +53,7 @@ nn = lambda s: re.sub(r"[^a-z0-9]", "", (s or "").lower().replace("’", "'"))
 pname = lambda x: x[0] if isinstance(x, list) else x
 
 # ---------- lookups ----------
-WEAP = collections.defaultdict(list); PLUG = {}
+WEAP = collections.defaultdict(list); PLUG = {}; PLUGNAME = {}
 for h, it in items.items():
     dp = it.get("displayProperties", {}); n = dp.get("name")
     if not n or not dp.get("icon"): continue
@@ -64,11 +64,59 @@ for h, it in items.items():
         # prefer real weapon perk categories over cosmetics or enhanced copies that share a name
         score = (cat in ("frames", "barrels", "magazines", "intrinsics", "origins", "guards", "blades", "batteries", "arrows", "stocks", "scopes", "tubes", "grips", "hafts", "bowstrings") or "origin" in cat,
                  "enhanced" not in cat)
-        if k not in PLUG or score > PLUG[k][1]: PLUG[k] = (dp["icon"], score)
+        if k not in PLUG or score > PLUG[k][1]: PLUG[k] = (dp["icon"], score); PLUGNAME[k] = n
+import difflib
+def close(key, pool, cutoff=0.86):
+    """spelling slips in the sheets ("Fimbulwinter Snitch", "Attritiion Orbs"): closest Bungie name, or a unique prefix"""
+    if not key or len(key) < 5: return None
+    m = difflib.get_close_matches(key, pool, n=1, cutoff=cutoff)
+    if m: return m[0]
+    pre = [k for k in pool if k.startswith(key)]
+    if len(pre) == 1 and len(key) >= 8: return pre[0]
+    inside = sorted((k for k in pool if len(k) >= 8 and key.startswith(k)), key=len, reverse=True)   # extra words after the name
+    return inside[0] if inside else None
+WEAPKEYS = list(WEAP)
 def weapon_def(w):
     c = WEAP.get(nn(w["name"]))
+    if not c and w["id"].startswith("pvp-"):
+        k = close(nn(w["name"]), WEAPKEYS, 0.8)
+        if k:
+            c = WEAP[k]; w["name"] = c[0]["displayProperties"]["name"]   # show Bungie's spelling
     if not c: return None
+    if w.get("exotic"): c = [it for it in c if (it.get("inventory") or {}).get("tierType") == 6] or c
     return sorted(c, key=lambda it: (bool(it.get("screenshot")), bool(it.get("iconWatermark")), it.get("index", 0)), reverse=True)[0]
+
+# ---------- PvP mode (pvp.py): the same weapons in Pride's sheet plus an Exotic section ----------
+PVP = data.get("pvp") or {}
+PW = PVP.get("weapons", [])
+ALLW = data["weapons"] + PW
+EXO_TYPE = {"auto rifle": "Autos", "combat bow": "Bows", "hand cannon": "HCs", "pulse rifle": "Pulses", "scout rifle": "Scouts",
+            "sidearm": "Sidearms", "submachine gun": "SMGs", "fusion rifle": "Fusions", "glaive": "Glaives", "shotgun": "Shotguns",
+            "sniper rifle": "Snipers", "trace rifle": "Traces", "linear fusion rifle": "LFRs", "machine gun": "LMGs",
+            "rocket launcher": "Rockets", "sword": "Swords"}
+DMGN = {h: d["displayProperties"]["name"] for h, d in dmg.items() if d["displayProperties"].get("name")}
+if PW:
+    collectibles = comp("DestinyCollectibleDefinition"); seasons = comp("DestinySeasonDefinition")
+    SEASON = {h: str(d.get("seasonNumber", "")) for h, d in seasons.items()}
+    for w in PW:
+        it = weapon_def(w)
+        if not it: continue
+        if not w["season"] and it.get("seasonHash"): w["season"] = SEASON.get(str(it["seasonHash"]), "")
+        if not w.get("exotic"): continue
+        t = (it.get("itemTypeDisplayName") or "").lower(); ammo_t = (it.get("equippingBlock") or {}).get("ammoType")
+        w["arch"] = ("HGLs" if ammo_t == 3 else "BGLs") if t == "grenade launcher" else EXO_TYPE.get(t, "Other")
+        w["ammoType"] = w.get("ammoType") or {1: "primary", 2: "special", 3: "heavy"}.get(ammo_t, "")
+        w["element"] = DMGN.get(str(it.get("defaultDamageTypeHash")), "Kinetic")
+        src = collectibles.get(str(it.get("collectibleHash")), {}).get("sourceString", "")
+        w["source"] = re.sub(r"^Source:\s*", "", src).strip() or "Exotic"
+        for se in it.get("sockets", {}).get("socketEntries", []):
+            d = items.get(str(se.get("singleInitialItemHash")))
+            if d and (d.get("plug") or {}).get("plugCategoryIdentifier") == "intrinsics" and d["displayProperties"].get("name"):
+                w["frame"] = d["displayProperties"]["name"]; break
+    for w in PW:
+        if w.get("exotic") and not w["arch"]: w["arch"] = "Other"     # not found on Bungie: still listed, under Other
+    order = [ar for a in ("primary", "special", "heavy", "other") for ar in data["ammo"].get(a, [])]
+    PVP["ammo"]["exotic"] = [ar for ar in order if any(w.get("exotic") and w["arch"] == ar for w in PW)]
 def socket_plugs(it):
     out = {}; intrinsic = None
     for se in it.get("sockets", {}).get("socketEntries", []):
@@ -84,13 +132,14 @@ def socket_plugs(it):
                 intrinsic = d["displayProperties"]["icon"]
     return out, intrinsic
 
+PLUGKEYS = list(PLUG)
 # ---------- image download (cached by file name; Bungie icon paths are content hashed) ----------
 need = set()
 plan = {"weapons": {}, "frames": {}, "perks": {}, "origins": {}}
 report = collections.defaultdict(list)
-for w in data["weapons"]:
+for w in ALLW:
     it = weapon_def(w)
-    if not it: report["weapon not on Bungie"].append(f"{w['arch']}: {w['name']}"); continue
+    if not it: report["weapon not on Bungie" + (" (PvP)" if w["id"].startswith("pvp-") else "")].append(f"{w['arch'] or 'Exotic'}: {w['name']}"); continue
     plan["weapons"][w["id"]] = (it["displayProperties"]["icon"], it.get("iconWatermark", ""))
     # full weapon artwork for the image popup, newest copy first; Bungie is sometimes slow to upload art for reissues,
     # so older copies are kept as fallbacks (shots.py and the website try them in order)
@@ -104,8 +153,13 @@ for w in data["weapons"]:
         if p: plan["frames"][w["id"]] = p; need.add(p)
         else: report["frame without Bungie icon"].append(f"{w['name']}: {w['frame']}")
     for slot in ("p1", "p2", "barrel", "mag"):
-        for x in w[slot]:
+        for i, x in enumerate(w[slot]):
             n = pname(x); p = own.get(nn(n)) or (PLUG.get(nn(n)) or (None,))[0]
+            if not p and w["id"].startswith("pvp-"):      # Pride's spelling slips: use Bungie's name and icon
+                k = close(nn(n), list(own)) or close(nn(n), PLUGKEYS, 0.9)
+                if k:
+                    p = own.get(k) or PLUG[k][0]; fixed = PLUGNAME.get(k) or n
+                    w[slot][i] = [fixed] if isinstance(x, list) else fixed; n = fixed
             if p: plan["perks"][(w["id"], n)] = p; need.add(p)
             else: report[("perk" if slot[0] == "p" else slot) + " without Bungie icon"].append(n)
     if w["origin"] and w["origin"] != "None":
@@ -117,7 +171,7 @@ MW = {}
 for it in items.values():
     n = it.get("displayProperties", {}).get("name", "")
     if n.startswith("Masterworked: ") and it["displayProperties"].get("icon"): MW[n[14:]] = it["displayProperties"]["icon"]
-for w in data["weapons"]:
+for w in ALLW:
     for st in filter(None, (x.strip() for x in (w["mw"] or "").split("/"))):
         p = MW.get(MWN.get(st, st))
         if p: need.add(p)
@@ -157,7 +211,8 @@ HEADER_ART = {"primary": ["/img/destiny_content/ammo_types/primary.png", ("node"
               # class symbols for the Hunter / Titan / Warlock switch (triumph art; the Collections class nodes are the fallback)
               "hunter":  [("record", 1123588991, "icon"), ("node", 3745240322, "icon")],
               "titan":   [("record", 3139610115, "icon"), ("node", 811225638, "icon")],
-              "warlock": [("record", 401164180, "icon"), ("node", 1269917845, "icon")]}
+              "warlock": [("record", 401164180, "icon"), ("node", 1269917845, "icon")],
+              "exotic":  [("item", 1010947726, "icon")]}                     # the gold Exotic Engram, for PvP's Exotic tab
 headplan = {}
 for k, opts in HEADER_ART.items():
     paths = []
@@ -165,7 +220,7 @@ for k, opts in HEADER_ART.items():
         if isinstance(o, str): paths.append(o)
         else:
             if o[0] == "loadout": ic = loadicons.get(str(o[1]), {}).get(o[2])
-            else: ic = {"node": nodes, "vendor": vendors, "record": records}[o[0]].get(str(o[1]), {}).get("displayProperties", {}).get(o[2])
+            else: ic = {"node": nodes, "vendor": vendors, "record": records, "item": items}[o[0]].get(str(o[1]), {}).get("displayProperties", {}).get(o[2])
             if ic: paths.append(ic)
     if paths: headplan[k] = paths; need.update(paths)
     else: report["header icon missing"].append(k)
@@ -243,9 +298,22 @@ def gl(p, tile=False):
 
 done = collections.Counter()
 sheet_pi = {w["id"]: dict(w.get("pi") or {}) for w in data["weapons"]}
-for w in data["weapons"]:
+canon_img, canon_shot = {}, {}
+slugify = lambda x: re.sub(r"[^a-z0-9]+", "-", x.lower()).strip("-")
+for w in ALLW:
+    # a gun listed in both modes shares one picture and one full image (w["wi"], w["sh"] point at the first copy)
+    if w.get("shot"):
+        key = tuple(w["shot"])
+        if key in canon_shot: w["sh"] = canon_shot[key]
+        else:
+            shard = ("pvp-" if w["id"].startswith("pvp-") else "") + slugify(w["arch"] or "exotic")
+            w["sh"] = canon_shot[key] = [shard, w["id"]]
     if w["id"] in plan["weapons"]:
-        ip, wp = plan["weapons"][w["id"]]; im = load(ip)
+        ip, wp = plan["weapons"][w["id"]]
+        if (ip, wp) in canon_img:
+            w["wi"] = canon_img[(ip, wp)]; done["weapon images"] += 1; im = None
+        else:
+            canon_img[(ip, wp)] = w["id"]; im = load(ip)
         if im is not None:
             im = im.resize((96, 96), Image.LANCZOS); wm = load(wp) if wp else None
             if wm is not None: im.alpha_composite(wm.resize((96, 96), Image.LANCZOS))
@@ -393,6 +461,12 @@ for s in data["sets"]:
 def vec(im):
     bg = Image.new("RGBA", im.size, (0, 0, 0, 255)); bg.alpha_composite(im)
     return np.asarray(bg.convert("L").resize((32, 32))).astype(float).ravel()
+for s in PVP.get("sets", []):   # PvP ratings of the same sets get the same Bungie bonus icons and descriptions
+    for b in s["bonuses"]:
+        p = (setplan.get(s["id"]) or {}).get(b["pcs"]); k = gl(p) if p else None
+        if k: b["bi"] = k
+        d = (bdesc.get(s["id"]) or {}).get(b["pcs"])
+        if d: b["bn"], b["bd"] = d
 for s in data["sets"]:
     bon = setplan.get(s["id"]) or {}
     for b in s["bonuses"]:
@@ -412,9 +486,9 @@ for s in data["sets"]:
 
 # drop sheet icons nothing points at any more
 used = set()
-for w in data["weapons"]:
+for w in ALLW:
     used.update(filter(None, [w.get("fi"), w.get("oi")])); used.update((w.get("pi") or {}).values()); used.update((w.get("mwi") or {}).values())
-for s in data["sets"]: used.update(b.get("bi") for b in s["bonuses"] if b.get("bi"))
+for s in data["sets"] + PVP.get("sets", []): used.update(b.get("bi") for b in s["bonuses"] if b.get("bi"))
 ticons = {k: v for k, v in ticons.items() if k in used}
 json.dump(data, open(os.path.join(OUT, "data.json"), "w"), separators=(",", ":"), ensure_ascii=False)
 json.dump(icons, open(os.path.join(OUT, "icons.json"), "w"), separators=(",", ":"))
@@ -425,7 +499,12 @@ lines = [f"Bungie manifest {ver}",
          f"weapon images {done['weapon images']}/{len(data['weapons'])}, frames {done['frames']}/{sum(1 for w in data['weapons'] if w['frame'])}, "
          f"perk slots {done['perk slots']}/{slots}, barrels {done['barrel icons']}/{sum(len(w['barrel']) for w in data['weapons'])}, "
          f"mags {done['mag icons']}/{sum(len(w['mag']) for w in data['weapons'])}, masterwork {done['masterwork icons']}, origin traits {done['origin traits']}, energy {done['energy icons']}/6, stun {done['stun icons']}/3, "
-         f"header icons {done['header icons']}/11, weapon type silhouettes {done['weapon type silhouettes']}/{sum(len(a) for a in data['ammo'].values())}, armor piece images {done['armor piece images']}/{len(data['sets']) * 15}, set icons {done['set icons']}/{len(data['sets'])}, set bonus icons {done['set bonus icons']}/{sum(len(s['bonuses']) for s in data['sets'])}, set bonus descriptions {done['set bonus descriptions']}/{sum(len(s['bonuses']) for s in data['sets'])}"]
+         f"header icons {done['header icons']}/12, weapon type silhouettes {done['weapon type silhouettes']}/{sum(len(a) for a in data['ammo'].values())}, armor piece images {done['armor piece images']}/{len(data['sets']) * 15}, set icons {done['set icons']}/{len(data['sets'])}, set bonus icons {done['set bonus icons']}/{sum(len(s['bonuses']) for s in data['sets'])}, set bonus descriptions {done['set bonus descriptions']}/{sum(len(s['bonuses']) for s in data['sets'])}"]
+if PW:
+    pslots = sum(len(w["p1"]) + len(w["p2"]) for w in PW)
+    lines.append(f"PvP: {len(PW)} weapons ({sum(1 for w in PW if w.get('exotic'))} exotic), pictures {sum(1 for w in PW if w['id'] in plan['weapons'])}/{len(PW)}, "
+                 f"perk icons {sum(1 for w in PW for x in w['p1'] + w['p2'] if pname(x) in (w.get('pi') or {}))}/{pslots}, "
+                 f"exotic types {sum(1 for w in PW if w.get('exotic') and w['arch'] != 'Other')}/{sum(1 for w in PW if w.get('exotic'))}")
 for k, v in report.items():
     lines.append(f"{k} ({len(set(v))}, these keep the sheet's icon): " + ", ".join(sorted(set(v))[:40]))
 open(os.path.join(OUT, "report.txt"), "w").write("\n".join(lines) + "\n")
