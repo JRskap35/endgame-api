@@ -12,9 +12,16 @@ python3 -I kit/check.py build/data_e.json build/icons.json
 # PvP mode: Pride Eternal / Finnald's Destiny 2 PvP Spreadsheet (legendary + exotic weapons, Shopping List, set bonuses)
 python3 -I kit/pvp_fetch.py build/pvp_raw.json
 python3 -I kit/pvp.py build/data_e.json build/pvp_raw.json build/data_ep.json
+# PvP cross check: Pride's sheet is the baseline; Bungie's roll pools, Hugo's WeaponStat Chart (PvP TTK) and the Destiny Data
+# Compendium win where they disagree. Fixes the lists, then audits them; stops the deploy if a rule still breaks
+python3 -I kit/hugo_fetch.py build/hugo.json assets/hugo_cache.json
+python3 -I kit/crosscheck.py build/data_ep.json build/hugo.json "${BUNGIE_CACHE:-build/bungie_cache}" build/data_epx.json build/crosscheck.txt
+{ echo '## PvP cross check'; echo '```'; cat build/crosscheck.txt; echo '```'; } >> "${GITHUB_STEP_SUMMARY:-/dev/null}" || true
 # swap in Bungie's official icons (weapons, frames, perks, barrels, mags, masterwork, origin traits, energy, stun, armor sets)
-python3 -I kit/bungie.py build/data_ep.json build/icons.json build/ticons.json assets/elements.json build/bungie "${BUNGIE_CACHE:-build/bungie_cache}"
+python3 -I kit/bungie.py build/data_epx.json build/icons.json build/ticons.json assets/elements.json build/bungie "${BUNGIE_CACHE:-build/bungie_cache}"
 cat build/bungie/report.txt >> "${GITHUB_STEP_SUMMARY:-/dev/null}" || true
+# the finished PvP lists must still follow the cross check rules
+python3 -I kit/crosscheck.py --check build/bungie/data.json build/hugo.json "${BUNGIE_CACHE:-build/bungie_cache}"
 python3 -I kit/assemble.py src/template.html build/bungie/data.json build/bungie/icons.json site/index.html assets/stat_icons.json build/bungie/ticons.json build/bungie/elements.json assets/brand.json firebase/config.json
 # what changed since the last published version (shown on the workflow run page)
 if [ -n "${SITE_URL:-}" ] && curl -sSfL --max-time 60 "$SITE_URL" -o build/prev.html; then

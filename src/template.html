@@ -257,6 +257,8 @@ a.btn svg{width:14px;height:14px}
 .mode-r b{font-size:12px}
 .mode-r.r-y b{color:var(--god)} .mode-r.r-n b{color:var(--t-d)} .mode-r.r-m b{color:var(--semi)} .mode-r.r-s b{color:var(--look)}
 .dshop b{font-size:13.5px;line-height:1.35}
+.dttk .ttkl{display:grid;gap:3px;font-size:12.5px;line-height:1.35;color:var(--muted)}
+.dttk b{color:var(--god)}
 table{width:100%;border-collapse:separate;border-spacing:0}
 .wtable{min-width:1180px;table-layout:fixed}
 .wtable th{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;letter-spacing:.1em}
@@ -1042,6 +1044,7 @@ function detailPanel(w){
         : `<div class="dstat"><h4>Upgrade</h4><b class="up ${w.up==="Yes"?"yes":""}">${w.up==="Yes"?"⬆ ":""}${esc(w.up)}</b></div>`}
       ${w.modes && Object.keys(w.modes).length ? `<div class="dstat dmodes"><h4>Playlists</h4><div class="modes">${Object.entries(w.modes).map(([k,v]) => `<span class="mode-r r-${{"✔":"y","✖":"n","▲":"m","!":"s"}[v]||"o"}" title="${esc(k)}: ${esc({"✔":"Optimal","✖":"Not recommended","▲":"Viable","!":"Situational"}[v]||v)}"><b>${esc(v)}</b>${esc(k)}</span>`).join("")}</div></div>` : ""}
       ${w.shop ? `<div class="dstat dshop"><h4>Shopping List${w.shop.priority?` · ${esc(w.shop.priority)}`:""}</h4><b>${esc(w.shop.role)}</b></div>` : ""}
+      ${w.ttk ? `<div class="dstat dttk" title="Time to kill in PvP, optimal shots from full health (Hugo's WeaponStat Chart and the Destiny Data Compendium)"><h4>TTK</h4><b>${w.ttk.best.toFixed(2)}s</b><div class="ttkl">${w.ttk.by.length ? `<span>with ${w.ttk.by.map(esc).join(" or ")}</span><span>${w.ttk.base.toFixed(2)}s with no perk active</span>` : `<span>no listed perk lowers it</span>`}</div></div>` : ""}
       <div class="dnotes"><h4>Notes</h4><p>${esc(w.notes) || '<span class="dim">No notes</span>'}</p>${notes.map(n => `<div class="foot">[${n}] ${esc(NOTES[n]||"")}</div>`).join("")}</div>
     </div>
   </div>`;
@@ -1202,7 +1205,7 @@ function weaponList(mode){
     const detailGrid = open ? detailPanel(w) : "";
     if(PHONE.matches){
       return `<article class="wcard ${open?"open":""}">
-        <div class="wc-top">${statusBtn}${thumb(w)}<div class="wc-name">${nameBlock}</div>${tierCell(w.tier, isPvp() ? null : w.rank)}</div>
+        <div class="wc-top">${statusBtn}${thumb(w)}<div class="wc-name">${nameBlock}</div>${tierCell(w.tier, w.rank)}</div>
         <div class="wc-info">${elemCell(w.element)}${frameCell(w)}${isPvp() ? "" : stunImg(w.stun)}${originCell(w)}<span class="wc-src">${w.srcX?`<s>${esc(w.source)}</s>`:esc(w.source)}</span></div>
         <div class="wc-perks"><div class="wc-h">Perk 1</div><div class="wc-h">Perk 2</div>${perkNamed(w, w.p1, rowsN)}${perkNamed(w, w.p2, rowsN)}</div>
         ${detailGrid}</article>`;
@@ -1218,7 +1221,7 @@ function weaponList(mode){
       <td class="c-perk">${perkCol(w, w.p1, rowsN)}</td>
       <td class="c-perk">${perkCol(w, w.p2, rowsN)}</td>
       <td class="c-ico">${originCell(w)}</td>
-      <td class="c-tier">${tierCell(w.tier, isPvp() ? null : w.rank)}</td>
+      <td class="c-tier">${tierCell(w.tier, w.rank)}</td>
     </tr>`;
     if(!open) return row;
     return row + `<tr class="detail"><td colspan="${isPvp() ? 10 : 11}">${detailGrid}</td></tr>`;
@@ -1478,7 +1481,21 @@ function infoModal(){
           <li>PvP armor set bonus ratings</li>
         </ul>
       </div>
-      <p>Endgame API checks both sheets every week, so the tiers and rolls here always follow their latest analysis. All credit for that work goes to them.</p>
+      <div class="credit">
+        <div class="sheet">Destiny WeaponStat Chart v2.1</div>
+        <div class="by">by <b>Hugo</b></div>
+        <ul>
+          <li>PvP time to kill for every frame and perk</li>
+          <li>PvP tiers and order for autos, hand cannons, pulses, scouts, sidearms and SMGs, fastest TTK first</li>
+        </ul>
+      </div>
+      <div class="credit">
+        <div class="sheet">Destiny Data Compendium</div>
+        <ul>
+          <li>What triggers each perk, and its PvP numbers</li>
+        </ul>
+      </div>
+      <p>Endgame API checks every sheet every week, so the tiers and rolls here always follow their latest analysis. All credit for that work goes to them.</p>
       <div class="maker">Endgame API made by <b>SteelToe</b></div>
       <p class="fine">Weapon, perk, frame, armor set, energy and stun icons come straight from Bungie's Destiny 2 API and refresh with the weekly update. Fan made and not affiliated with Bungie. Destiny 2 and its icons and artwork belong to Bungie.</p>
     </div>
